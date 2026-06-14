@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: notice_system_web
+    ports:
+      - "2008:80"
+    volumes:
+      - ./www:/var/www/html
+    depends_on:
+      - db
+    networks:
+      - notice_network
+
+  db:
+    image: mysql:8.0
+    container_name: notice_system_db
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: notice_db
+      MYSQL_USER: notice_user
+      MYSQL_PASSWORD: notice_pass
+    ports:
+      - "20083:3306"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql_data:/var/lib/mysql
+    networks:
+      - notice_network
+
+networks:
+  notice_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
