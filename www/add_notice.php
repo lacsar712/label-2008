@@ -41,14 +41,23 @@
         $author = sanitize($_POST['author']);
         $priority = sanitize($_POST['priority']);
         $status = sanitize($_POST['status']);
+        $author_id = isset($_POST['author_id']) ? intval($_POST['author_id']) : null;
+        
+        if (empty($author) && is_logged_in()) {
+            $current_user = get_current_user();
+            if ($current_user) {
+                $author = $current_user['nickname'] ?: $current_user['username'];
+                $author_id = $current_user['id'];
+            }
+        }
         
         $conn = getConnection();
         
         if (isset($_POST['id']) && !empty($_POST['id'])) {
             // 更新公告
             $id = intval($_POST['id']);
-            $stmt = $conn->prepare("UPDATE notices SET title=?, content=?, author=?, priority=?, status=? WHERE id=?");
-            $stmt->bind_param("sssssi", $title, $content, $author, $priority, $status, $id);
+            $stmt = $conn->prepare("UPDATE notices SET title=?, content=?, author=?, author_id=?, priority=?, status=? WHERE id=?");
+            $stmt->bind_param("sssissi", $title, $content, $author, $author_id, $priority, $status, $id);
             
             if ($stmt->execute()) {
                 $success_message = "公告更新成功！";
@@ -58,8 +67,13 @@
             $stmt->close();
         } else {
             // 添加新公告
-            $stmt = $conn->prepare("INSERT INTO notices (title, content, author, priority, status) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssss", $title, $content, $author, $priority, $status);
+            if ($author_id) {
+                $stmt = $conn->prepare("INSERT INTO notices (title, content, author, author_id, priority, status) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("sssiss", $title, $content, $author, $author_id, $priority, $status);
+            } else {
+                $stmt = $conn->prepare("INSERT INTO notices (title, content, author, priority, status) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param("sssss", $title, $content, $author, $priority, $status);
+            }
             
             if ($stmt->execute()) {
                 $success_message = "公告添加成功！";
@@ -188,5 +202,6 @@
             <p>&copy; 2024 公告信息管理系统. All rights reserved.</p>
         </div>
     </footer>
+    <script src="app.js"></script>
 </body>
 </html>

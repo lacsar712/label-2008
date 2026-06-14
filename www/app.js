@@ -1,0 +1,207 @@
+const API_BASE = 'api';
+
+async function apiRequest(endpoint, method = 'GET', data = null, isFormData = false) {
+    const options = {
+        method: method,
+        headers: {}
+    };
+
+    if (data && !isFormData) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(data);
+    } else if (data && isFormData) {
+        options.body = data;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/${endpoint}`, options);
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        return {
+            code: 500,
+            message: '网络请求失败，请稍后重试'
+        };
+    }
+}
+
+function showToast(message, type = 'error') {
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+        <svg class="toast-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            ${type === 'success' 
+                ? '<path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+                : '<path d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+            }
+        </svg>
+        <span class="toast-message">${message}</span>
+    `;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('toast-show');
+    }, 10);
+
+    setTimeout(() => {
+        toast.classList.remove('toast-show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function showFormError(formId, fieldName, message) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+
+    const field = form.querySelector(`[name="${fieldName}"]`);
+    if (!field) return;
+
+    const formGroup = field.closest('.form-group');
+    if (!formGroup) return;
+
+    formGroup.classList.add('has-error');
+    
+    let errorEl = formGroup.querySelector('.field-error');
+    if (!errorEl) {
+        errorEl = document.createElement('div');
+        errorEl.className = 'field-error';
+        formGroup.appendChild(errorEl);
+    }
+    errorEl.textContent = message;
+}
+
+function clearFormErrors(formId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+
+    form.querySelectorAll('.form-group.has-error').forEach(group => {
+        group.classList.remove('has-error');
+        const errorEl = group.querySelector('.field-error');
+        if (errorEl) errorEl.remove();
+    });
+}
+
+function toggleUserMenu() {
+    const menu = document.getElementById('userMenu');
+    if (menu) {
+        menu.classList.toggle('show');
+    }
+}
+
+document.addEventListener('click', function(e) {
+    const dropdown = document.querySelector('.user-dropdown');
+    const menu = document.getElementById('userMenu');
+    if (dropdown && menu && !dropdown.contains(e.target)) {
+        menu.classList.remove('show');
+    }
+});
+
+async function logout() {
+    const result = await apiRequest('logout', 'POST');
+    if (result.code === 200) {
+        showToast(result.message, 'success');
+        setTimeout(() => {
+            window.location.href = 'login.php';
+        }, 500);
+    } else {
+        showToast(result.message, 'error');
+    }
+}
+
+async function getCurrentUser() {
+    const result = await apiRequest('me', 'GET');
+    if (result.code === 200) {
+        return result.data;
+    }
+    return null;
+}
+
+function handleApiError(result, formId) {
+    const errorFieldMap = {
+        1001: 'username',
+        1002: 'username',
+        1003: 'username',
+        1004: 'email',
+        1005: 'email',
+        1006: 'email',
+        1007: 'password',
+        1008: 'password',
+        1009: 'confirm_password',
+        1010: 'username',
+        1011: 'username',
+        1012: 'old_password',
+        1013: 'new_password',
+        1014: 'token',
+        1015: 'avatar',
+        1016: 'avatar',
+        1017: 'avatar'
+    };
+
+    if (formId && errorFieldMap[result.code]) {
+        showFormError(formId, errorFieldMap[result.code], result.message);
+    } else {
+        showToast(result.message, 'error');
+    }
+}
+
+function initAuthForm(formId, endpoint, successCallback) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        clearFormErrors(formId);
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner"></span> 处理中...';
+
+        const formData = new FormData(form);
+        const data = {};
+        formData.forEach((value, key) => {
+            data[key] = value;
+        });
+
+        const result = await apiRequest(endpoint, 'POST', data);
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+
+        if (result.code === 200) {
+            showToast(result.message, 'success');
+            if (successCallback) {
+                successCallback(result);
+            }
+        } else {
+            handleApiError(result, formId);
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const authorField = document.querySelector('input[name="author"]');
+    if (authorField && !authorField.hasAttribute('data-initialized')) {
+        authorField.setAttribute('data-initialized', 'true');
+        
+        getCurrentUser().then(user => {
+            if (user && authorField.closest('.notice-form')) {
+                const displayName = user.nickname || user.username;
+                authorField.value = displayName;
+                authorField.disabled = true;
+                authorField.classList.add('disabled');
+                
+                const authorIdInput = document.createElement('input');
+                authorIdInput.type = 'hidden';
+                authorIdInput.name = 'author_id';
+                authorIdInput.value = user.id;
+                authorField.closest('form').appendChild(authorIdInput);
+            }
+        });
+    }
+});

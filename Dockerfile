@@ -4,8 +4,13 @@ FROM php:8.1-apache
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 
-# 安装 mysqli 扩展
-RUN docker-php-ext-install mysqli pdo pdo_mysql
+# 安装 mysqli 和 GD 扩展
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install mysqli pdo pdo_mysql gd
 
 # 启用 Apache mod_rewrite
 RUN a2enmod rewrite

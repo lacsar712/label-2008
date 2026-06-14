@@ -13,13 +13,47 @@ CREATE TABLE IF NOT EXISTS notices (
     title VARCHAR(255) NOT NULL COMMENT '公告标题',
     content TEXT NOT NULL COMMENT '公告内容',
     author VARCHAR(100) NOT NULL COMMENT '发布人',
+    author_id INT DEFAULT NULL COMMENT '发布人用户ID',
     publish_date DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
     update_date DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     status ENUM('published', 'draft') DEFAULT 'published' COMMENT '状态',
     priority ENUM('high', 'medium', 'low') DEFAULT 'medium' COMMENT '优先级',
     views INT DEFAULT 0 COMMENT '浏览次数',
     INDEX idx_publish_date (publish_date),
+    INDEX idx_status (status),
+    INDEX idx_author_id (author_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 创建用户表
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名',
+    email VARCHAR(100) NOT NULL UNIQUE COMMENT '邮箱',
+    password VARCHAR(255) NOT NULL COMMENT '加密后的密码',
+    avatar_url VARCHAR(255) DEFAULT NULL COMMENT '头像URL',
+    nickname VARCHAR(50) DEFAULT NULL COMMENT '昵称',
+    bio VARCHAR(255) DEFAULT NULL COMMENT '个人简介',
+    register_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
+    last_login_time DATETIME DEFAULT NULL COMMENT '最后登录时间',
+    last_login_ip VARCHAR(45) DEFAULT NULL COMMENT '最后登录IP',
+    status ENUM('active', 'inactive', 'banned') DEFAULT 'active' COMMENT '状态',
+    reset_token VARCHAR(255) DEFAULT NULL COMMENT '密码重置令牌',
+    reset_token_expire DATETIME DEFAULT NULL COMMENT '重置令牌过期时间',
+    INDEX idx_username (username),
+    INDEX idx_email (email),
     INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 创建频率限制表
+CREATE TABLE IF NOT EXISTS rate_limits (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ip VARCHAR(45) NOT NULL COMMENT 'IP地址',
+    action VARCHAR(50) NOT NULL COMMENT '操作类型',
+    count INT DEFAULT 0 COMMENT '次数',
+    window_start DATETIME NOT NULL COMMENT '时间窗口开始',
+    UNIQUE KEY unique_ip_action (ip, action),
+    INDEX idx_ip (ip),
+    INDEX idx_action (action)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 插入示例数据
