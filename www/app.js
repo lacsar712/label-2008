@@ -204,4 +204,39 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    loadCategoryCards();
 });
+
+async function loadCategoryCards() {
+    const container = document.getElementById('categoryCards');
+    if (!container) return;
+
+    const result = await apiRequest('categories/stats', 'GET');
+    if (result.code === 200 && result.data) {
+        if (result.data.length === 0) {
+            container.innerHTML = '<p class="no-data">暂无分类</p>';
+            return;
+        }
+        
+        container.innerHTML = result.data.map(cat => `
+            <a href="search_notice.php?search_category=${cat.id}" class="category-card" style="--cat-color: ${cat.color};">
+                <div class="category-card-header">
+                    <span class="category-card-emoji">${cat.emoji || '📁'}</span>
+                    <span class="category-card-count">${cat.notice_count}</span>
+                </div>
+                <h4 class="category-card-name">${escapeHtml(cat.name)}</h4>
+                <p class="category-card-desc">${escapeHtml(cat.description || '查看该分类下的公告')}</p>
+            </a>
+        `).join('');
+    } else {
+        container.innerHTML = '<p class="no-data">加载失败</p>';
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}

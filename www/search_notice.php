@@ -38,6 +38,16 @@
     $search_title = isset($_GET['search_title']) ? sanitize($_GET['search_title']) : '';
     $search_author = isset($_GET['search_author']) ? sanitize($_GET['search_author']) : '';
     $search_priority = isset($_GET['search_priority']) ? sanitize($_GET['search_priority']) : '';
+    $search_category = isset($_GET['search_category']) ? sanitize($_GET['search_category']) : '';
+    
+    // 获取分类列表
+    $conn = getConnection();
+    $category_result = $conn->query("SELECT * FROM categories WHERE status = 'enabled' ORDER BY sort_order ASC, id ASC");
+    $categories = [];
+    while ($cat = $category_result->fetch_assoc()) {
+        $categories[] = $cat;
+    }
+    closeConnection($conn);
     
     // 构建查询
     $conn = getConnection();
@@ -46,27 +56,33 @@
     $types = '';
     
     if (!empty($search_title)) {
-        $where_clauses[] = "title LIKE ?";
+        $where_clauses[] = "n.title LIKE ?";
         $params[] = "%$search_title%";
         $types .= 's';
     }
     
     if (!empty($search_author)) {
-        $where_clauses[] = "author LIKE ?";
+        $where_clauses[] = "n.author LIKE ?";
         $params[] = "%$search_author%";
         $types .= 's';
     }
     
     if (!empty($search_priority)) {
-        $where_clauses[] = "priority = ?";
+        $where_clauses[] = "n.priority = ?";
         $params[] = $search_priority;
         $types .= 's';
+    }
+    
+    if (!empty($search_category)) {
+        $where_clauses[] = "n.category_id = ?";
+        $params[] = $search_category;
+        $types .= 'i';
     }
     
     $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
     
     // 获取总记录数
-    $count_sql = "SELECT COUNT(*) as total FROM notices $where_sql";
+    $count_sql = "SELECT COUNT(*) as total FROM notices n $where_sql";
     if (!empty($params)) {
         $count_stmt = $conn->prepare($count_sql);
         $count_stmt->bind_param($types, ...$params);
@@ -82,7 +98,7 @@
     $total_pages = ceil($total_records / $per_page);
     
     // 获取当前页数据
-    $sql = "SELECT * FROM notices $where_sql ORDER BY publish_date DESC LIMIT ? OFFSET ?";
+    $sql = "SELECT n.*, c.name as category_name, c.emoji as category_emoji, c.color as category_color FROM notices n LEFT JOIN categories c ON n.category_id = c.id $where_sql ORDER BY n.publish_date DESC LIMIT ? OFFSET ?";
     $params[] = $per_page;
     $params[] = $offset;
     $types .= 'ii';
@@ -136,6 +152,18 @@
                                    placeholder="搜索发布人...">
                         </div>
                         <div class="search-field">
+                            <label for="search_category">分类</label>
+                            <select id="search_category" name="search_category">
+                                <option value="">全部</option>
+                                <?php foreach ($categories as $cat): ?>
+                                    <option value="<?php echo $cat['id']; ?>" 
+                                        <?php echo $search_category == $cat['id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars(($cat['emoji'] ? $cat['emoji'] . ' ' : '') . $cat['name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="search-field">
                             <label for="search_priority">优先级</label>
                             <select id="search_priority" name="search_priority">
                                 <option value="">全部</option>
@@ -174,10 +202,11 @@
                     <thead>
                         <tr>
                             <th width="5%">ID</th>
-                            <th width="25%">标题</th>
-                            <th width="30%">内容摘要</th>
-                            <th width="10%">发布人</th>
-                            <th width="8%">优先级</th>
+                            <th width="8%">分类</th>
+                            <th width="22%">标题</th>
+                            <th width="28%">内容摘要</th>
+                            <th width="8%">发布人</th>
+                            <th width="7%">优先级</th>
                             <th width="12%">发布时间</th>
                             <th width="10%">操作</th>
                         </tr>
@@ -186,6 +215,15 @@
                         <?php while($row = $result->fetch_assoc()): ?>
                         <tr>
                             <td><?php echo $row['id']; ?></td>
+                            <td>
+                                <?php if ($row['category_name']): ?>
+                                    <span class="category-badge" style="background-color: <?php echo htmlspecialchars($row['category_color']); ?>20; color: <?php echo htmlspecialchars($row['category_color']); ?>;">
+                                        <?php echo htmlspecialchars(($row['category_emoji'] ? $row['category_emoji'] . ' ' : '') . $row['category_name']); ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
                             <td class="notice-title-cell">
                                 <?php echo htmlspecialchars($row['title']); ?>
                             </td>
@@ -210,7 +248,7 @@
                                         <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13M18.5 2.5C18.8978 2.1022 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.1022 21.5 2.5C21.8978 2.8978 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.1022 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
                                 </a>
-                                <a href="?delete=<?php echo $row['id']; ?>&page=<?php echo $page; ?><?php echo !empty($search_title) ? '&search_title=' . urlencode($search_title) : ''; ?><?php echo !empty($search_author) ? '&search_author=' . urlencode($search_author) : ''; ?><?php echo !empty($search_priority) ? '&search_priority=' . urlencode($search_priority) : ''; ?>" 
+                                <a href="?delete=<?php echo $row['id']; ?>&page=<?php echo $page; ?><?php echo !empty($search_title) ? '&search_title=' . urlencode($search_title) : ''; ?><?php echo !empty($search_author) ? '&search_author=' . urlencode($search_author) : ''; ?><?php echo !empty($search_priority) ? '&search_priority=' . urlencode($search_priority) : ''; ?><?php echo !empty($search_category) ? '&search_category=' . urlencode($search_category) : ''; ?>" 
                                    class="btn-icon-action delete" 
                                    title="删除"
                                    onclick="return confirm('确定要删除这条公告吗？');">
@@ -241,6 +279,7 @@
                 if (!empty($search_title)) $query_params[] = 'search_title=' . urlencode($search_title);
                 if (!empty($search_author)) $query_params[] = 'search_author=' . urlencode($search_author);
                 if (!empty($search_priority)) $query_params[] = 'search_priority=' . urlencode($search_priority);
+                if (!empty($search_category)) $query_params[] = 'search_category=' . urlencode($search_category);
                 $query_string = !empty($query_params) ? '&' . implode('&', $query_params) : '';
                 
                 // 上一页

@@ -41,6 +41,7 @@
         $author = sanitize($_POST['author']);
         $priority = sanitize($_POST['priority']);
         $status = sanitize($_POST['status']);
+        $category_id = isset($_POST['category_id']) && !empty($_POST['category_id']) ? intval($_POST['category_id']) : null;
         $author_id = isset($_POST['author_id']) ? intval($_POST['author_id']) : null;
         
         if (empty($author) && is_logged_in()) {
@@ -56,8 +57,8 @@
         if (isset($_POST['id']) && !empty($_POST['id'])) {
             // 更新公告
             $id = intval($_POST['id']);
-            $stmt = $conn->prepare("UPDATE notices SET title=?, content=?, author=?, author_id=?, priority=?, status=? WHERE id=?");
-            $stmt->bind_param("sssissi", $title, $content, $author, $author_id, $priority, $status, $id);
+            $stmt = $conn->prepare("UPDATE notices SET title=?, content=?, author=?, author_id=?, priority=?, status=?, category_id=? WHERE id=?");
+            $stmt->bind_param("sssissii", $title, $content, $author, $author_id, $priority, $status, $category_id, $id);
             
             if ($stmt->execute()) {
                 $success_message = "公告更新成功！";
@@ -68,11 +69,11 @@
         } else {
             // 添加新公告
             if ($author_id) {
-                $stmt = $conn->prepare("INSERT INTO notices (title, content, author, author_id, priority, status) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("sssiss", $title, $content, $author, $author_id, $priority, $status);
+                $stmt = $conn->prepare("INSERT INTO notices (title, content, author, author_id, priority, status, category_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("sssisssi", $title, $content, $author, $author_id, $priority, $status, $category_id);
             } else {
-                $stmt = $conn->prepare("INSERT INTO notices (title, content, author, priority, status) VALUES (?, ?, ?, ?, ?)");
-                $stmt->bind_param("sssss", $title, $content, $author, $priority, $status);
+                $stmt = $conn->prepare("INSERT INTO notices (title, content, author, priority, status, category_id) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("sssssi", $title, $content, $author, $priority, $status, $category_id);
             }
             
             if ($stmt->execute()) {
@@ -85,6 +86,15 @@
         
         closeConnection($conn);
     }
+    
+    // 获取分类列表
+    $conn = getConnection();
+    $category_result = $conn->query("SELECT * FROM categories WHERE status = 'enabled' ORDER BY sort_order ASC, id ASC");
+    $categories = [];
+    while ($cat = $category_result->fetch_assoc()) {
+        $categories[] = $cat;
+    }
+    closeConnection($conn);
     ?>
     
     <!-- 导航栏 -->
@@ -152,6 +162,19 @@
                     </div>
 
                     <div class="form-row">
+                        <div class="form-group">
+                            <label for="category_id">分类</label>
+                            <select id="category_id" name="category_id">
+                                <option value="">请选择分类</option>
+                                <?php foreach ($categories as $cat): ?>
+                                    <option value="<?php echo $cat['id']; ?>" 
+                                        <?php echo ($edit_mode && $notice['category_id'] == $cat['id']) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars(($cat['emoji'] ? $cat['emoji'] . ' ' : '') . $cat['name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
                         <div class="form-group">
                             <label for="author">发布人 <span class="required">*</span></label>
                             <input type="text" id="author" name="author" required 

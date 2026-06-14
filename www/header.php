@@ -16,6 +16,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <li><a href="index.php" class="<?php echo $current_page == 'index.php' ? 'active' : ''; ?>">首页</a></li>
             <li><a href="add_notice.php" class="<?php echo $current_page == 'add_notice.php' ? 'active' : ''; ?>">添加公告</a></li>
             <li><a href="search_notice.php" class="<?php echo $current_page == 'search_notice.php' ? 'active' : ''; ?>">查询公告</a></li>
+            <li><a href="categories.php" class="<?php echo $current_page == 'categories.php' ? 'active' : ''; ?>">分类管理</a></li>
         </ul>
         <div class="nav-user">
             <?php if ($current_user): ?>

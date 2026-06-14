@@ -7,9 +7,24 @@ CREATE DATABASE IF NOT EXISTS notice_db DEFAULT CHARACTER SET utf8mb4 COLLATE ut
 
 USE notice_db;
 
+-- 创建公告分类表
+CREATE TABLE IF NOT EXISTS categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL COMMENT '分类名称',
+    emoji VARCHAR(32) DEFAULT NULL COMMENT 'emoji图标',
+    color VARCHAR(32) DEFAULT '#6366f1' COMMENT '颜色(十六进制)',
+    description VARCHAR(255) DEFAULT NULL COMMENT '分类描述',
+    sort_order INT DEFAULT 0 COMMENT '排序值',
+    status ENUM('enabled', 'disabled') DEFAULT 'enabled' COMMENT '启用状态',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_status (status),
+    INDEX idx_sort_order (sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 创建公告信息表
 CREATE TABLE IF NOT EXISTS notices (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    category_id INT DEFAULT NULL COMMENT '分类ID',
     title VARCHAR(255) NOT NULL COMMENT '公告标题',
     content TEXT NOT NULL COMMENT '公告内容',
     author VARCHAR(100) NOT NULL COMMENT '发布人',
@@ -21,7 +36,9 @@ CREATE TABLE IF NOT EXISTS notices (
     views INT DEFAULT 0 COMMENT '浏览次数',
     INDEX idx_publish_date (publish_date),
     INDEX idx_status (status),
-    INDEX idx_author_id (author_id)
+    INDEX idx_author_id (author_id),
+    INDEX idx_category_id (category_id),
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 创建用户表
@@ -66,3 +83,12 @@ INSERT INTO notices (title, content, author, priority, status, publish_date) VAL
 ('用户调查问卷', '为了更好地改进我们的服务，诚邀您参与用户满意度调查，您的意见对我们非常重要。', '客服部', 'low', 'published', DATE_SUB(NOW(), INTERVAL 5 DAY)),
 ('培训课程通知', '本月将举办系统使用培训课程，欢迎新用户报名参加，详情请查看培训中心。', '培训部', 'medium', 'published', DATE_SUB(NOW(), INTERVAL 7 DAY)),
 ('版本更新说明', '系统已更新至v2.0版本，新增了数据导出、批量操作等功能，提升了系统性能。', '技术部', 'medium', 'published', DATE_SUB(NOW(), INTERVAL 10 DAY));
+
+-- 插入示例分类数据
+INSERT INTO categories (name, emoji, color, description, sort_order, status) VALUES
+('系统公告', '📢', '#6366f1', '系统相关的公告通知', 1, 'enabled'),
+('技术维护', '🔧', '#3b82f6', '技术维护和升级通知', 2, 'enabled'),
+('安全提醒', '🔒', '#ef4444', '安全相关的提醒公告', 3, 'enabled'),
+('人事通知', '📋', '#f59e0b', '人事相关的通知公告', 4, 'enabled'),
+('活动通知', '🎉', '#10b981', '各类活动通知', 5, 'enabled'),
+('产品更新', '🚀', '#8b5cf6', '产品功能更新说明', 6, 'disabled');

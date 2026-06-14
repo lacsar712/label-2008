@@ -71,13 +71,24 @@
                         <h4>查询公告</h4>
                         <p>搜索和浏览公告</p>
                     </a>
-                    <a href="search_notice.php" class="action-card">
+                    <a href="categories.php" class="action-card">
                         <svg class="action-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M9 5H7C5.89543 5 5 5.89543 5 7V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V7C19 5.89543 18.1046 5 17 5H15M9 5C9 6.10457 9.89543 7 11 7H13C14.1046 7 15 6.10457 15 5M9 5C9 3.89543 9.89543 3 11 3H13C14.1046 3 15 3.89543 15 5M12 12H15M12 16H15M9 12H9.01M9 16H9.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M7 7H20M7 12H20M7 17H20M3 7H3.01M3 12H3.01M3 17H3.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                        <h4>管理公告</h4>
-                        <p>编辑和删除公告</p>
+                        <h4>分类管理</h4>
+                        <p>管理公告分类</p>
                     </a>
+                </div>
+            </div>
+
+            <!-- 按分类浏览 -->
+            <div class="category-browse">
+                <div class="section-header">
+                    <h3>按分类浏览</h3>
+                    <a href="search_notice.php" class="view-all">查看全部 →</a>
+                </div>
+                <div class="category-cards" id="categoryCards">
+                    <div class="loading">加载中...</div>
                 </div>
             </div>
 
