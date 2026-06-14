@@ -4,6 +4,7 @@ require_once '../../config.php';
 require_once '../../common.php';
 
 require_login();
+require_permission('category:delete');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_response(400, '请求方法错误');

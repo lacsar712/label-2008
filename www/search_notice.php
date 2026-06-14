@@ -10,10 +10,11 @@
 </head>
 <body>
     <?php
-    require_once 'config.php';
+    require_once 'common.php';
     
     // 处理删除操作
     if (isset($_GET['delete'])) {
+        require_permission('notice:delete');
         $id = intval($_GET['delete']);
         $conn = getConnection();
         $stmt = $conn->prepare("DELETE FROM notices WHERE id = ?");
@@ -136,7 +137,15 @@
 
             <!-- 搜索表单 -->
             <div class="search-container">
-                <h2>查询公告</h2>
+                <div class="search-header">
+                    <h2>查询公告</h2>
+                    <a href="recycle_bin.php" class="btn btn-secondary recycle-btn" data-permission="notice:recycle">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6L18.1327 19.1425C18.0579 20.1891 17.187 21 16.1378 21H7.86224C6.81296 21 5.94208 20.1891 5.86732 19.1425L5 6M10 11V17M14 11V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        回收站
+                    </a>
+                </div>
                 <form method="GET" action="" class="search-form">
                     <div class="search-fields">
                         <div class="search-field">
@@ -243,7 +252,7 @@
                             </td>
                             <td><?php echo date('Y-m-d H:i', strtotime($row['publish_date'])); ?></td>
                             <td class="action-buttons">
-                                <a href="add_notice.php?id=<?php echo $row['id']; ?>" class="btn-icon-action edit" title="编辑">
+                                <a href="add_notice.php?id=<?php echo $row['id']; ?>" class="btn-icon-action edit" title="编辑" data-permission="notice:edit">
                                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13M18.5 2.5C18.8978 2.1022 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.1022 21.5 2.5C21.8978 2.8978 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.1022 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
@@ -251,6 +260,7 @@
                                 <a href="?delete=<?php echo $row['id']; ?>&page=<?php echo $page; ?><?php echo !empty($search_title) ? '&search_title=' . urlencode($search_title) : ''; ?><?php echo !empty($search_author) ? '&search_author=' . urlencode($search_author) : ''; ?><?php echo !empty($search_priority) ? '&search_priority=' . urlencode($search_priority) : ''; ?><?php echo !empty($search_category) ? '&search_category=' . urlencode($search_category) : ''; ?>" 
                                    class="btn-icon-action delete" 
                                    title="删除"
+                                   data-permission="notice:delete"
                                    onclick="return confirm('确定要删除这条公告吗？');">
                                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M19 7L18.1327 19.1425C18.0579 20.1891 17.187 21 16.1378 21H7.86224C6.81296 21 5.94208 20.1891 5.86732 19.1425L5 7M10 11V17M14 11V17M15 7V4C15 3.44772 14.5523 3 14 3H10C9.44772 3 9 3.44772 9 4V7M4 7H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

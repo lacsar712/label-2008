@@ -92,3 +92,89 @@ INSERT INTO categories (name, emoji, color, description, sort_order, status) VAL
 ('人事通知', '📋', '#f59e0b', '人事相关的通知公告', 4, 'enabled'),
 ('活动通知', '🎉', '#10b981', '各类活动通知', 5, 'enabled'),
 ('产品更新', '🚀', '#8b5cf6', '产品功能更新说明', 6, 'disabled');
+
+-- 创建角色表
+CREATE TABLE IF NOT EXISTS roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE COMMENT '角色标识',
+    display_name VARCHAR(100) NOT NULL COMMENT '角色显示名称',
+    description VARCHAR(255) DEFAULT NULL COMMENT '角色描述',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 创建权限表
+CREATE TABLE IF NOT EXISTS permissions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE COMMENT '权限标识',
+    display_name VARCHAR(100) NOT NULL COMMENT '权限显示名称',
+    description VARCHAR(255) DEFAULT NULL COMMENT '权限描述',
+    category VARCHAR(50) DEFAULT 'other' COMMENT '权限分类',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_name (name),
+    INDEX idx_category (category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 创建角色权限关联表
+CREATE TABLE IF NOT EXISTS role_permissions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    role_id INT NOT NULL COMMENT '角色ID',
+    permission_id INT NOT NULL COMMENT '权限ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    UNIQUE KEY unique_role_permission (role_id, permission_id),
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+    FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 创建用户角色关联表
+CREATE TABLE IF NOT EXISTS user_roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL COMMENT '用户ID',
+    role_id INT NOT NULL COMMENT '角色ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    UNIQUE KEY unique_user_role (user_id, role_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 插入预置权限数据
+INSERT INTO permissions (name, display_name, description, category) VALUES
+-- 公告相关权限
+('notice:view', '查看公告', '查看公告列表和详情', 'notice'),
+('notice:create', '创建公告', '发布新公告', 'notice'),
+('notice:edit', '编辑公告', '修改已有公告', 'notice'),
+('notice:delete', '删除公告', '删除公告', 'notice'),
+('notice:recycle', '回收站管理', '管理回收站和恢复公告', 'notice'),
+-- 分类相关权限
+('category:view', '查看分类', '查看分类列表', 'category'),
+('category:create', '创建分类', '添加新分类', 'category'),
+('category:edit', '编辑分类', '修改分类信息', 'category'),
+('category:delete', '删除分类', '删除分类', 'category'),
+-- 用户相关权限
+('user:view', '查看用户', '查看用户列表', 'user'),
+('user:assign_role', '分配用户角色', '为用户分配或解绑角色', 'user'),
+-- 角色相关权限
+('role:view', '查看角色', '查看角色列表和详情', 'role'),
+('role:create', '创建角色', '添加新角色', 'role'),
+('role:edit', '编辑角色', '修改角色信息', 'role'),
+('role:delete', '删除角色', '删除角色', 'role'),
+('role:assign_permission', '分配权限', '为角色分配权限', 'role');
+
+-- 插入预置角色数据
+INSERT INTO roles (name, display_name, description) VALUES
+('super_admin', '超级管理员', '拥有系统所有权限'),
+('editor', '编辑', '负责公告和分类的管理'),
+('guest', '访客', '仅拥有查看权限');
+
+-- 为超级管理员分配所有权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 1, id FROM permissions;
+
+-- 为编辑分配公告和分类管理权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 2, id FROM permissions WHERE category IN ('notice', 'category');
+
+-- 为访客分配仅查看权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, id FROM permissions WHERE name IN ('notice:view', 'category:view');

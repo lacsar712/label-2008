@@ -57,7 +57,7 @@
             <div class="quick-actions">
                 <h3>快捷操作</h3>
                 <div class="action-cards">
-                    <a href="add_notice.php" class="action-card">
+                    <a href="add_notice.php" class="action-card" data-permission="notice:create">
                         <svg class="action-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
@@ -71,12 +71,32 @@
                         <h4>查询公告</h4>
                         <p>搜索和浏览公告</p>
                     </a>
-                    <a href="categories.php" class="action-card">
+                    <a href="categories.php" class="action-card" data-permission="category:view">
                         <svg class="action-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M7 7H20M7 12H20M7 17H20M3 7H3.01M3 12H3.01M3 17H3.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         <h4>分类管理</h4>
                         <p>管理公告分类</p>
+                    </a>
+                    <a href="roles.php" class="action-card" data-permission="role:view">
+                        <svg class="action-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 15L9 12L10.5 10.5L12 12L16.5 7.5L18 9L12 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M9 14L4.5 18.5L3 21L5.5 19.5L10 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M14 4L18.5 8.5L16 11L11.5 6.5L14 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M13 5L11 7L7 11L5 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <h4>角色管理</h4>
+                        <p>管理系统角色和权限</p>
+                    </a>
+                    <a href="user_roles.php" class="action-card" data-permission="user:view">
+                        <svg class="action-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M23 21V19C22.9993 18.1137 22.7044 17.2528 22.1614 16.5523C21.6184 15.8519 20.8581 15.3516 20 15.13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89317 18.7122 8.75608 18.1676 9.45768C17.623 10.1593 16.8604 10.6597 16 10.88" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <h4>用户角色</h4>
+                        <p>为用户分配角色</p>
                     </a>
                 </div>
             </div>

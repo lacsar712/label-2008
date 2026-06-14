@@ -148,4 +148,136 @@ function send_reset_email($email, $token) {
     
     return mail($email, $subject, $message, $headers);
 }
+
+function get_user_roles($user_id = null) {
+    if ($user_id === null) {
+        $user_id = $_SESSION['user_id'] ?? null;
+    }
+    if (!$user_id) {
+        return [];
+    }
+    
+    $conn = getConnection();
+    $stmt = $conn->prepare("SELECT r.* FROM roles r INNER JOIN user_roles ur ON r.id = ur.role_id WHERE ur.user_id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $roles = [];
+    while ($row = $result->fetch_assoc()) {
+        $roles[] = $row;
+    }
+    $stmt->close();
+    closeConnection($conn);
+    
+    return $roles;
+}
+
+function get_user_permissions($user_id = null) {
+    if ($user_id === null) {
+        $user_id = $_SESSION['user_id'] ?? null;
+    }
+    if (!$user_id) {
+        return [];
+    }
+    
+    $conn = getConnection();
+    $stmt = $conn->prepare("SELECT DISTINCT p.* FROM permissions p INNER JOIN role_permissions rp ON p.id = rp.permission_id INNER JOIN user_roles ur ON rp.role_id = ur.role_id WHERE ur.user_id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $permissions = [];
+    while ($row = $result->fetch_assoc()) {
+        $permissions[] = $row;
+    }
+    $stmt->close();
+    closeConnection($conn);
+    
+    return $permissions;
+}
+
+function get_user_permission_names($user_id = null) {
+    $permissions = get_user_permissions($user_id);
+    return array_column($permissions, 'name');
+}
+
+function has_permission($permission_name, $user_id = null) {
+    $permission_names = get_user_permission_names($user_id);
+    return in_array($permission_name, $permission_names);
+}
+
+function has_any_permission($permission_names, $user_id = null) {
+    $user_permissions = get_user_permission_names($user_id);
+    foreach ($permission_names as $perm) {
+        if (in_array($perm, $user_permissions)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function has_role($role_name, $user_id = null) {
+    $roles = get_user_roles($user_id);
+    foreach ($roles as $role) {
+        if ($role['name'] === $role_name) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function require_permission($permission_name) {
+    if (!is_logged_in()) {
+        if ($_SERVER['CONTENT_TYPE'] === 'application/json' || strpos($_SERVER['REQUEST_URI'], '/api/') !== false) {
+            json_response(401, '请先登录');
+        } else {
+            header('Location: login.php');
+            exit();
+        }
+    }
+    
+    if (!has_permission($permission_name)) {
+        if ($_SERVER['CONTENT_TYPE'] === 'application/json' || strpos($_SERVER['REQUEST_URI'], '/api/') !== false) {
+            json_response(403, '权限不足');
+        } else {
+            header('HTTP/1.1 403 Forbidden');
+            echo '权限不足，无法访问此页面';
+            exit();
+        }
+    }
+}
+
+function get_all_roles() {
+    $conn = getConnection();
+    $result = $conn->query("SELECT * FROM roles ORDER BY id ASC");
+    $roles = [];
+    while ($row = $result->fetch_assoc()) {
+        $roles[] = $row;
+    }
+    closeConnection($conn);
+    return $roles;
+}
+
+function get_all_permissions() {
+    $conn = getConnection();
+    $result = $conn->query("SELECT * FROM permissions ORDER BY category, id ASC");
+    $permissions = [];
+    while ($row = $result->fetch_assoc()) {
+        $permissions[] = $row;
+    }
+    closeConnection($conn);
+    return $permissions;
+}
+
+function get_permissions_grouped() {
+    $permissions = get_all_permissions();
+    $grouped = [];
+    foreach ($permissions as $perm) {
+        $category = $perm['category'];
+        if (!isset($grouped[$category])) {
+            $grouped[$category] = [];
+        }
+        $grouped[$category][] = $perm;
+    }
+    return $grouped;
+}
 ?>

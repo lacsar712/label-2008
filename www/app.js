@@ -1,4 +1,58 @@
 const API_BASE = 'api';
+let currentUserPermissions = [];
+let currentUserRoles = [];
+let permissionsLoaded = false;
+
+async function loadCurrentUserPermissions() {
+    if (permissionsLoaded) return currentUserPermissions;
+    
+    try {
+        const result = await apiRequest('me/permissions', 'GET');
+        if (result.code === 200 && result.data) {
+            currentUserPermissions = result.data.permission_names || [];
+            currentUserRoles = result.data.role_names || [];
+        }
+    } catch (e) {
+        console.error('Failed to load permissions:', e);
+    }
+    permissionsLoaded = true;
+    return currentUserPermissions;
+}
+
+function hasPermission(permission) {
+    return currentUserPermissions.includes(permission);
+}
+
+function hasAnyPermission(permissions) {
+    return permissions.some(p => currentUserPermissions.includes(p));
+}
+
+function hasRole(role) {
+    return currentUserRoles.includes(role);
+}
+
+function initPermissionBasedUI() {
+    document.querySelectorAll('[data-permission]').forEach(el => {
+        const permission = el.getAttribute('data-permission');
+        if (!hasPermission(permission)) {
+            el.style.display = 'none';
+        }
+    });
+    
+    document.querySelectorAll('[data-any-permission]').forEach(el => {
+        const permissions = el.getAttribute('data-any-permission').split(',');
+        if (!hasAnyPermission(permissions)) {
+            el.style.display = 'none';
+        }
+    });
+    
+    document.querySelectorAll('[data-role]').forEach(el => {
+        const role = el.getAttribute('data-role');
+        if (!hasRole(role)) {
+            el.style.display = 'none';
+        }
+    });
+}
 
 async function apiRequest(endpoint, method = 'GET', data = null, isFormData = false) {
     const options = {
@@ -185,6 +239,10 @@ function initAuthForm(formId, endpoint, successCallback) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    loadCurrentUserPermissions().then(() => {
+        initPermissionBasedUI();
+    });
+    
     const authorField = document.querySelector('input[name="author"]');
     if (authorField && !authorField.hasAttribute('data-initialized')) {
         authorField.setAttribute('data-initialized', 'true');

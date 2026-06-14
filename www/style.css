@@ -609,6 +609,19 @@ body {
     box-shadow: var(--shadow-lg);
 }
 
+.search-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.search-header h2 {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin: 0;
+}
+
 .search-container h2 {
     font-size: 1.5rem;
     color: var(--text-primary);

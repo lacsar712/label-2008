@@ -10,13 +10,14 @@
 </head>
 <body>
     <?php
-    require_once 'config.php';
+    require_once 'common.php';
     
     $edit_mode = false;
     $notice = null;
     
     // 检查是否为编辑模式
     if (isset($_GET['id'])) {
+        require_permission('notice:edit');
         $edit_mode = true;
         $id = intval($_GET['id']);
         $conn = getConnection();
@@ -32,10 +33,17 @@
             header("Location: search_notice.php");
             exit();
         }
+    } else {
+        require_permission('notice:create');
     }
     
     // 处理表单提交
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        if (isset($_POST['id']) && !empty($_POST['id'])) {
+            require_permission('notice:edit');
+        } else {
+            require_permission('notice:create');
+        }
         $title = sanitize($_POST['title']);
         $content = sanitize($_POST['content']);
         $author = sanitize($_POST['author']);
