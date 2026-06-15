@@ -1,6 +1,6 @@
 <?php
 require_once 'common.php';
-$current_user = get_current_user();
+$current_user = get_logged_in_user();
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <nav class="navbar">

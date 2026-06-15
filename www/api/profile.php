@@ -6,7 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_login();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $user = get_current_user();
+    $user = get_logged_in_user();
     if ($user) {
         json_response(200, '获取成功', $user);
     } else {
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $stmt->close();
         closeConnection($conn);
         
-        $user = get_current_user();
+        $user = get_logged_in_user();
         json_response(200, '更新成功', $user);
     } else {
         $stmt->close();

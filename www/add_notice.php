@@ -1,4 +1,7 @@
-<?php header('Content-Type: text/html; charset=UTF-8'); ?>
+<?php
+header('Content-Type: text/html; charset=UTF-8');
+require_once 'common.php';
+?>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -77,7 +80,7 @@
         }
         
         if (empty($author) && is_logged_in()) {
-            $current_user = get_current_user();
+            $current_user = get_logged_in_user();
             if ($current_user) {
                 $author = $current_user['nickname'] ?: $current_user['username'];
                 $author_id = $current_user['id'];

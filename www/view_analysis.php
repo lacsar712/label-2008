@@ -2,7 +2,7 @@
 require_once 'common.php';
 require_permission('view_analysis:view');
 header('Content-Type: text/html; charset=UTF-8');
-$current_user = get_current_user();
+$current_user = get_logged_in_user();
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">

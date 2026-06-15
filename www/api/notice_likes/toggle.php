@@ -33,7 +33,7 @@ $ip = get_client_ip();
 $client_type = get_client_type();
 $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500) : null;
 
-$user = get_current_user();
+$user = get_logged_in_user();
 $nickname = $user ? ($user['nickname'] ?: $user['username']) : '匿名用户';
 
 $stmt = $conn->prepare("SELECT id FROM notice_likes WHERE notice_id = ? AND visitor_id = ?");

@@ -1,4 +1,7 @@
-<?php header('Content-Type: text/html; charset=UTF-8'); ?>
+<?php
+header('Content-Type: text/html; charset=UTF-8');
+require_once 'common.php';
+?>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>

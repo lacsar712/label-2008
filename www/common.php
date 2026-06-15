@@ -87,7 +87,7 @@ function require_login() {
     }
 }
 
-function get_current_user() {
+function get_logged_in_user() {
     if (!is_logged_in()) {
         return null;
     }
@@ -339,7 +339,7 @@ function get_target_type_label($type) {
 }
 
 function write_operation_log($operation_type, $target_type, $target_id, $before_data = null, $after_data = null) {
-    $user = get_current_user();
+    $user = get_logged_in_user();
     $user_id = $user ? $user['id'] : null;
     $user_nickname = $user ? ($user['nickname'] ?: $user['username']) : null;
     

@@ -37,7 +37,7 @@ while ($cat = $categories_result->fetch_assoc()) {
 $priority_map = ['高' => 'high', '中' => 'medium', '低' => 'low'];
 $status_map_val = ['已发布' => 'published', '草稿' => 'draft'];
 
-$current_user = get_current_user();
+$current_user = get_logged_in_user();
 $author_id = $current_user ? intval($current_user['id']) : null;
 
 $results = [];

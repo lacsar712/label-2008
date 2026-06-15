@@ -1,5 +1,6 @@
 <?php
 header('Content-Type: text/html; charset=UTF-8');
+require_once 'common.php';
 $token = $_GET['token'] ?? '';
 if (empty($token)) {
     header('Location: login.php');

@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 require_login();
 
-$user = get_current_user();
+$user = get_logged_in_user();
 
 if ($user) {
     json_response(200, '获取成功', $user);
