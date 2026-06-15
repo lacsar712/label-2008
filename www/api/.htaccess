@@ -6,7 +6,13 @@
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # 把无后缀的 URL 映射到对应的 .php 文件
+    # 例如  /api/login            -> /api/login.php
+    #       /api/me/permissions   -> /api/me/permissions.php
+    #       /api/notices/search   -> /api/notices/search.php
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ index.php [QSA,L]
+    RewriteCond %{REQUEST_FILENAME}.php -f
+    RewriteRule ^(.+?)/?$ $1.php [QSA,L]
 </IfModule>

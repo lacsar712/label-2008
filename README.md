@@ -131,6 +131,19 @@ docker-compose up -d
 - **Web 系统**: http://localhost:2008
 - **MySQL 数据库**: localhost:20083
 
+### 默认登录账号
+
+系统首次初始化时会自动创建一个超级管理员账号，可直接使用：
+
+| 用户名 | 密码 | 角色 |
+|--------|------|------|
+| `admin` | `admin123` | 超级管理员（拥有所有权限） |
+
+> ⚠️ **安全提示**：请在登录后立即在"个人中心"修改默认密码，避免在生产环境中使用默认凭据。
+> 如果你已经启动过项目并希望重置该账号，请执行 `docker-compose down -v && docker-compose up -d` 重新初始化数据库。
+
+其他账号可以通过注册页面 [http://localhost:2008/register.php](http://localhost:2008/register.php) 自行创建，或登录管理员账号后在用户管理中分配角色。
+
 ### 数据库配置
 - **数据库名**: notice_db
 - **用户名**: notice_user

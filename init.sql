@@ -408,3 +408,13 @@ SELECT 2, id FROM permissions WHERE name IN ('notice_like:view', 'notice_like:ex
 -- 为访客分配点赞权限
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 3, id FROM permissions WHERE name = 'notice:like';
+
+-- 插入默认超级管理员账号
+-- 用户名: admin
+-- 密码: admin123  (bcrypt 加密存储, 由 password_hash($pwd, PASSWORD_DEFAULT) 生成)
+INSERT INTO users (username, email, password, nickname, bio, status) VALUES
+('admin', 'admin@example.com', '$2y$10$aUrW51XxQ9sL2sEATyy/vestgehUj7uj9cZrFRnJjmiqmht/kvONe', '超级管理员', '系统默认管理员账号', 'active');
+
+-- 为默认管理员分配 super_admin 角色
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id FROM users u, roles r WHERE u.username = 'admin' AND r.name = 'super_admin';

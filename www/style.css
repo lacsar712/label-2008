@@ -1589,7 +1589,7 @@ input:disabled {
 
 .categories-search .search-fields {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-lg);
 }
@@ -1884,7 +1884,7 @@ input:disabled {
 
 .category-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: var(--spacing-lg);
 }
 
