@@ -1,7 +1,7 @@
 <?php
-require_once '../../common.php';
-
 header('Content-Type: application/json; charset=utf-8');
+require_once '../../config.php';
+require_once '../../common.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_response(400, '请求方法错误');

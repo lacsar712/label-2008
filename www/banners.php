@@ -33,8 +33,12 @@ require_permission('banner:view');
                         </svg>
                         新增Banner
                     </button>
-                </div>
-                <div class="page-actions">
+                    <a class="btn btn-primary" href="index.php" target="_blank">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        前往首页查看效果
+                    </a>
                 </div>
             </div>
 
