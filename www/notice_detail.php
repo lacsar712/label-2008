@@ -40,6 +40,23 @@ while ($tag = $tags_result->fetch_assoc()) {
 }
 $tags_stmt->close();
 
+$visitor_id = get_visitor_id();
+
+$like_count_stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM notice_likes WHERE notice_id = ?");
+$like_count_stmt->bind_param("i", $id);
+$like_count_stmt->execute();
+$like_count_result = $like_count_stmt->get_result();
+$like_count_row = $like_count_result->fetch_assoc();
+$like_count = intval($like_count_row['cnt']);
+$like_count_stmt->close();
+
+$is_liked_stmt = $conn->prepare("SELECT 1 FROM notice_likes WHERE notice_id = ? AND visitor_id = ?");
+$is_liked_stmt->bind_param("is", $id, $visitor_id);
+$is_liked_stmt->execute();
+$is_liked_result = $is_liked_stmt->get_result();
+$is_liked = $is_liked_result->num_rows > 0;
+$is_liked_stmt->close();
+
 closeConnection($conn);
 
 $notice['tags'] = $notice_tags;
@@ -143,11 +160,46 @@ $can_delete = has_permission('notice:delete');
                                 </svg>
                                 <span><?php echo $notice['views']; ?> 次浏览</span>
                             </div>
+                            <div class="notice-info-item like-info-item">
+                                <button 
+                                    type="button" 
+                                    class="like-btn inline-like-btn <?php echo $is_liked ? 'liked' : ''; ?>" 
+                                    data-notice-id="<?php echo $notice['id']; ?>" 
+                                    onclick="toggleLike(<?php echo $notice['id']; ?>, this)"
+                                    aria-pressed="<?php echo $is_liked ? 'true' : 'false'; ?>"
+                                >
+                                    <svg class="like-icon <?php echo $is_liked ? 'liked' : ''; ?>" viewBox="0 0 24 24" fill="<?php echo $is_liked ? 'currentColor' : 'none'; ?>" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M14 9V5A3 3 0 0 0 8 7v4H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span class="like-count"><?php echo $like_count; ?></span>
+                                </button>
+                            </div>
                         </div>
                     </header>
 
                     <div class="notice-detail-body">
                         <?php echo nl2br(htmlspecialchars($notice['content'])); ?>
+                    </div>
+
+                    <div class="notice-detail-action-bar">
+                        <button 
+                            type="button" 
+                            class="like-btn big-like-btn <?php echo $is_liked ? 'liked' : ''; ?>" 
+                            data-notice-id="<?php echo $notice['id']; ?>" 
+                            onclick="toggleLike(<?php echo $notice['id']; ?>, this)"
+                            aria-pressed="<?php echo $is_liked ? 'true' : 'false'; ?>"
+                        >
+                            <svg class="like-icon <?php echo $is_liked ? 'liked' : ''; ?>" viewBox="0 0 24 24" fill="<?php echo $is_liked ? 'currentColor' : 'none'; ?>" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14 9V5A3 3 0 0 0 8 7v4H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span class="like-btn-text"><?php echo $is_liked ? '已点赞' : '点赞'; ?></span>
+                            <span class="like-count-badge">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:14px; height:14px; display:inline-block; vertical-align:-2px; margin-right:4px;">
+                                    <path d="M14 9V5A3 3 0 0 0 8 7v4H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span class="like-count"><?php echo $like_count; ?></span>
+                            </span>
+                        </button>
                     </div>
 
                     <?php if ($notice['update_date'] && $notice['update_date'] != $notice['publish_date']): ?>

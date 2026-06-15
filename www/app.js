@@ -516,3 +516,97 @@ document.addEventListener('click', function(e) {
         dropdown.classList.remove('show');
     }
 });
+
+// 点赞/取消点赞
+async function toggleLike(noticeId, buttonEl) {
+    if (!noticeId || noticeId <= 0) return;
+
+    const likeBtn = buttonEl || event.currentTarget;
+    if (likeBtn) {
+        likeBtn.disabled = true;
+    }
+
+    try {
+        const result = await apiRequest('notice_likes/toggle', 'POST', { notice_id: noticeId });
+
+        if (result.code === 200) {
+            const liked = result.data && result.data.liked;
+            const allLikeBtns = document.querySelectorAll(`.like-btn[data-notice-id="${noticeId}"]`);
+
+            allLikeBtns.forEach(btn => {
+                if (liked) {
+                    btn.classList.add('liked');
+                    btn.setAttribute('aria-pressed', 'true');
+                    if (btn.querySelector('.like-icon')) {
+                        btn.querySelector('.like-icon').classList.add('liked');
+                    }
+                } else {
+                    btn.classList.remove('liked');
+                    btn.setAttribute('aria-pressed', 'false');
+                    if (btn.querySelector('.like-icon')) {
+                        btn.querySelector('.like-icon').classList.remove('liked');
+                    }
+                }
+
+                const countEl = btn.querySelector('.like-count');
+                if (countEl) {
+                    let currentCount = parseInt(countEl.textContent) || 0;
+                    currentCount = liked ? currentCount + 1 : Math.max(0, currentCount - 1);
+                    countEl.textContent = currentCount;
+                }
+            });
+
+            showToast(liked ? '点赞成功！' : '已取消点赞', 'success');
+        } else {
+            showToast(result.message || '操作失败', 'error');
+        }
+    } catch (error) {
+        console.error('Toggle like error:', error);
+        showToast('网络错误，请稍后重试', 'error');
+    } finally {
+        if (likeBtn) {
+            likeBtn.disabled = false;
+        }
+    }
+}
+
+// 批量初始化点赞按钮状态
+async function initLikeStatuses(noticeIds) {
+    if (!noticeIds || noticeIds.length === 0) return;
+
+    try {
+        for (const noticeId of noticeIds) {
+            const result = await apiRequest(`notice_likes/list?notice_id=${noticeId}&page_size=1&page=1`, 'GET');
+            if (result.code === 200 && result.data) {
+                const totalCount = result.data.total;
+                const likeBtns = document.querySelectorAll(`.like-btn[data-notice-id="${noticeId}"]`);
+                likeBtns.forEach(btn => {
+                    const countEl = btn.querySelector('.like-count');
+                    if (countEl) {
+                        countEl.textContent = totalCount;
+                    }
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Init like statuses error:', error);
+    }
+}
+
+// 检查单个公告是否已点赞（仅用于详情页初始化按钮状态）
+async function checkNoticeLiked(noticeId) {
+    if (!noticeId) return false;
+    
+    try {
+        const result = await apiRequest(`notice_likes/list?notice_id=${noticeId}&page_size=50&page=1`, 'GET');
+        if (result.code === 200 && result.data && result.data.list) {
+            const visitorId = window.LIKE_VISITOR_ID || null;
+            if (visitorId) {
+                return result.data.list.some(item => item.visitor_id === visitorId);
+            }
+        }
+    } catch (error) {
+        console.error('Check liked error:', error);
+    }
+    return false;
+}

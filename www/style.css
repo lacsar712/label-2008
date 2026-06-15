@@ -5116,6 +5116,229 @@ input[type="checkbox"] {
     }
 }
 
+/* ==================== 点赞按钮通用样式 ==================== */
+
+.like-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: 1px solid var(--border-color);
+    background: white;
+    color: var(--text-secondary);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    font-family: inherit;
+    line-height: 1;
+    position: relative;
+    overflow: visible;
+}
+
+.like-btn:hover:not(:disabled) {
+    border-color: #ef4444;
+    color: #ef4444;
+    background-color: #fef2f2;
+    transform: translateY(-1px);
+}
+
+.like-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.97);
+}
+
+.like-btn:disabled {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+.like-btn.liked {
+    border-color: #ef4444;
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+.like-btn.liked:hover:not(:disabled) {
+    background-color: #fecaca;
+    border-color: #dc2626;
+    color: #dc2626;
+}
+
+.like-icon {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    flex-shrink: 0;
+}
+
+.like-btn:hover:not(:disabled) .like-icon {
+    transform: scale(1.15);
+}
+
+.like-btn.liked .like-icon {
+    color: #ef4444;
+    fill: currentColor;
+    animation: like-bounce 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+@keyframes like-bounce {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.4); }
+    100% { transform: scale(1); }
+}
+
+.like-count {
+    font-weight: 500;
+    font-size: 0.85rem;
+    min-width: 10px;
+    text-align: center;
+}
+
+/* ===== 详情页信息栏内联点赞按钮 ===== */
+.like-info-item .inline-like-btn {
+    background: transparent;
+    border-color: transparent;
+    padding: 2px 8px;
+    margin-left: -4px;
+    color: var(--text-muted);
+}
+
+.like-info-item .inline-like-btn:hover:not(:disabled) {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #ef4444;
+}
+
+.like-info-item .inline-like-btn.liked {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #ef4444;
+}
+
+.like-info-item .inline-like-btn .like-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.like-info-item .inline-like-btn .like-count {
+    font-size: 0.8rem;
+    color: inherit;
+}
+
+/* ===== 详情页底部大点赞按钮 ===== */
+.notice-detail-action-bar {
+    margin-top: var(--spacing-2xl);
+    padding-top: var(--spacing-xl);
+    border-top: 1px solid var(--border-light);
+    display: flex;
+    justify-content: center;
+}
+
+.big-like-btn {
+    padding: 14px 40px;
+    font-size: 1.05rem;
+    border-radius: var(--radius-full);
+    border-width: 2px;
+    gap: 10px;
+    min-width: 220px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.big-like-btn .like-icon {
+    width: 22px;
+    height: 22px;
+}
+
+.big-like-btn.liked .like-icon {
+    animation: like-bounce-big 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+@keyframes like-bounce-big {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.5) rotate(-8deg); }
+    60% { transform: scale(0.9); }
+    100% { transform: scale(1); }
+}
+
+.like-btn-text {
+    font-weight: 500;
+}
+
+.like-count-badge {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.05);
+    color: inherit;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-left: auto;
+    transition: background-color 0.2s ease;
+}
+
+.big-like-btn.liked .like-count-badge {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+/* ===== 首页卡片点赞按钮 ===== */
+.card-like-btn {
+    padding: 3px 10px;
+    font-size: 0.8rem;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border-color: transparent;
+    margin-left: auto;
+}
+
+.card-like-btn:hover:not(:disabled) {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+}
+
+.card-like-btn .like-icon {
+    width: 13px;
+    height: 13px;
+}
+
+.card-like-btn .like-count {
+    font-size: 0.78rem;
+}
+
+/* ===== 查询列表表格点赞按钮 ===== */
+.table-like-btn {
+    padding: 5px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    margin-right: 2px;
+}
+
+.table-like-btn .like-icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* 首页 notice-card 的 notice-footer 调整布局适配点赞按钮 */
+.notice-footer {
+    display: flex;
+    align-items: center;
+}
+
+/* 当 div 作为卡片容器时，显示为块级 */
+div.notice-card-link {
+    cursor: pointer;
+}
+
+div.notice-card-link:hover {
+    transform: translateY(-2px);
+}
+
 /* ==================== 公告详情页 ==================== */
 
 .notice-detail-container {

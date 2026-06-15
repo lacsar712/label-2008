@@ -144,15 +144,38 @@ require_once 'common.php';
                     $result = $conn->query($sql);
                     
                     if ($result->num_rows > 0) {
+                        $notice_ids_for_likes = [];
                         while($row = $result->fetch_assoc()) {
+                            $notice_ids_for_likes[] = $row['id'];
+                            $notices_display[] = $row;
+                        }
+                        $result->free();
+                        
+                        $like_counts_map = [];
+                        if (!empty($notice_ids_for_likes)) {
+                            $placeholders = implode(',', array_fill(0, count($notice_ids_for_likes), '?'));
+                            $like_sql = "SELECT notice_id, COUNT(*) as cnt FROM notice_likes WHERE notice_id IN ($placeholders) GROUP BY notice_id";
+                            $like_stmt = $conn->prepare($like_sql);
+                            $like_types = str_repeat('i', count($notice_ids_for_likes));
+                            $like_stmt->bind_param($like_types, ...$notice_ids_for_likes);
+                            $like_stmt->execute();
+                            $like_result = $like_stmt->get_result();
+                            while ($like_row = $like_result->fetch_assoc()) {
+                                $like_counts_map[$like_row['notice_id']] = intval($like_row['cnt']);
+                            }
+                            $like_stmt->close();
+                        }
+                        
+                        foreach($notices_display as $row) {
                             $priority_class = 'priority-' . $row['priority'];
                             $priority_text = [
                                 'high' => '高',
                                 'medium' => '中',
                                 'low' => '低'
                             ][$row['priority']];
+                            $like_count = isset($like_counts_map[$row['id']]) ? $like_counts_map[$row['id']] : 0;
                             ?>
-                            <a href="notice_detail.php?id=<?php echo $row['id']; ?>" class="notice-card notice-card-link">
+                            <div class="notice-card notice-card-link" style="position: relative;" onclick="window.location.href='notice_detail.php?id=<?php echo $row['id']; ?>'">
                                 <div class="notice-header">
                                     <span class="priority-badge <?php echo $priority_class; ?>">
                                         <?php echo $priority_text; ?>
@@ -183,8 +206,19 @@ require_once 'common.php';
                                         </svg>
                                         <?php echo $row['views']; ?>
                                     </span>
+                                    <button 
+                                        type="button" 
+                                        class="like-btn card-like-btn" 
+                                        data-notice-id="<?php echo $row['id']; ?>" 
+                                        onclick="event.stopPropagation(); toggleLike(<?php echo $row['id']; ?>, this)"
+                                    >
+                                        <svg class="like-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M14 9V5A3 3 0 0 0 8 7v4H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                        <span class="like-count"><?php echo $like_count; ?></span>
+                                    </button>
                                 </div>
-                            </a>
+                            </div>
                             <?php
                         }
                     } else {

@@ -196,6 +196,21 @@ require_once 'common.php';
     // 重新构造结果
     $result = new ArrayObject($notices_data);
     $result = $result->getIterator();
+    
+    $like_counts_map = [];
+    if (!empty($notice_ids)) {
+        $placeholders = implode(',', array_fill(0, count($notice_ids), '?'));
+        $like_sql = "SELECT notice_id, COUNT(*) as cnt FROM notice_likes WHERE notice_id IN ($placeholders) GROUP BY notice_id";
+        $like_stmt = $conn->prepare($like_sql);
+        $like_types = str_repeat('i', count($notice_ids));
+        $like_stmt->bind_param($like_types, ...$notice_ids);
+        $like_stmt->execute();
+        $like_result = $like_stmt->get_result();
+        while ($like_row = $like_result->fetch_assoc()) {
+            $like_counts_map[$like_row['notice_id']] = intval($like_row['cnt']);
+        }
+        $like_stmt->close();
+    }
     ?>
     
     <?php include 'header.php'; ?>
@@ -329,11 +344,13 @@ require_once 'common.php';
                             <th width="6%">发布人</th>
                             <th width="6%">优先级</th>
                             <th width="11%">发布时间</th>
-                            <th width="14%">操作</th>
+                            <th width="18%">操作</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php while($result->valid()): $notice = $result->current(); $result->next(); ?>
+                        <?php while($result->valid()): $notice = $result->current(); $result->next();
+                            $like_count = isset($like_counts_map[$notice['id']]) ? $like_counts_map[$notice['id']] : 0;
+                        ?>
                         <tr>
                             <td><?php echo $notice['id']; ?></td>
                             <td>
@@ -382,6 +399,18 @@ require_once 'common.php';
                             </td>
                             <td><?php echo date('Y-m-d H:i', strtotime($notice['publish_date'])); ?></td>
                             <td class="action-buttons">
+                                <button 
+                                    type="button" 
+                                    class="like-btn table-like-btn" 
+                                    data-notice-id="<?php echo $notice['id']; ?>" 
+                                    onclick="toggleLike(<?php echo $notice['id']; ?>, this)"
+                                    title="点赞"
+                                >
+                                    <svg class="like-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M14 9V5A3 3 0 0 0 8 7v4H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span class="like-count"><?php echo $like_count; ?></span>
+                                </button>
                                 <a href="add_notice.php?id=<?php echo $notice['id']; ?>" class="btn-icon-action edit" title="编辑" data-permission="notice:edit">
                                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13M18.5 2.5C18.8978 2.1022 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.1022 21.5 2.5C21.8978 2.8978 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.1022 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
