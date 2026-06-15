@@ -40,6 +40,14 @@
     $search_author = isset($_GET['search_author']) ? sanitize($_GET['search_author']) : '';
     $search_priority = isset($_GET['search_priority']) ? sanitize($_GET['search_priority']) : '';
     $search_category = isset($_GET['search_category']) ? sanitize($_GET['search_category']) : '';
+    $search_tags_param = isset($_GET['search_tags']) ? sanitize($_GET['search_tags']) : '';
+    $search_tags = [];
+    if (!empty($search_tags_param)) {
+        $search_tags = array_map('intval', explode(',', $search_tags_param));
+        $search_tags = array_filter($search_tags, function($id) {
+            return $id > 0;
+        });
+    }
     
     // 获取分类列表
     $conn = getConnection();
@@ -48,6 +56,14 @@
     while ($cat = $category_result->fetch_assoc()) {
         $categories[] = $cat;
     }
+    
+    // 获取所有标签列表
+    $tags_result = $conn->query("SELECT * FROM tags ORDER BY reference_count DESC, id ASC");
+    $all_tags = [];
+    while ($tag = $tags_result->fetch_assoc()) {
+        $all_tags[] = $tag;
+    }
+    
     closeConnection($conn);
     
     // 构建查询
@@ -80,6 +96,15 @@
         $types .= 'i';
     }
     
+    if (!empty($search_tags)) {
+        $placeholders = implode(',', array_fill(0, count($search_tags), '?'));
+        $where_clauses[] = "n.id IN (SELECT notice_id FROM notice_tags WHERE tag_id IN ($placeholders))";
+        foreach ($search_tags as $tag_id) {
+            $params[] = $tag_id;
+            $types .= 'i';
+        }
+    }
+    
     $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
     
     // 获取总记录数
@@ -110,6 +135,37 @@
     }
     $stmt->execute();
     $result = $stmt->get_result();
+    
+    // 获取所有公告的标签
+    $notice_ids = [];
+    $notices_data = [];
+    while ($row = $result->fetch_assoc()) {
+        $notice_ids[] = $row['id'];
+        $notices_data[] = $row;
+    }
+    $result->free();
+    
+    $notice_tags = [];
+    if (!empty($notice_ids)) {
+        $placeholders = implode(',', array_fill(0, count($notice_ids), '?'));
+        $tag_types = str_repeat('i', count($notice_ids));
+        $tag_sql = "SELECT nt.notice_id, t.* FROM notice_tags nt INNER JOIN tags t ON nt.tag_id = t.id WHERE nt.notice_id IN ($placeholders) ORDER BY t.reference_count DESC, t.id ASC";
+        $tag_stmt = $conn->prepare($tag_sql);
+        $tag_stmt->bind_param($tag_types, ...$notice_ids);
+        $tag_stmt->execute();
+        $tag_result = $tag_stmt->get_result();
+        while ($tag_row = $tag_result->fetch_assoc()) {
+            if (!isset($notice_tags[$tag_row['notice_id']])) {
+                $notice_tags[$tag_row['notice_id']] = [];
+            }
+            $notice_tags[$tag_row['notice_id']][] = $tag_row;
+        }
+        $tag_stmt->close();
+    }
+    
+    // 重新构造结果
+    $result = new ArrayObject($notices_data);
+    $result = $result->getIterator();
     ?>
     
     <?php include 'header.php'; ?>
@@ -181,6 +237,31 @@
                                 <option value="low" <?php echo $search_priority == 'low' ? 'selected' : ''; ?>>低</option>
                             </select>
                         </div>
+                        <div class="search-field">
+                            <label>标签</label>
+                            <div class="tag-multi-select">
+                                <div class="tag-selector" id="tagSelector">
+                                    <span class="tag-selector-placeholder">点击选择标签...</span>
+                                </div>
+                                <div class="tag-dropdown" id="tagDropdown">
+                                    <?php foreach ($all_tags as $tag): ?>
+                                        <label class="tag-dropdown-item">
+                                            <input type="checkbox" name="search_tag_checkbox" value="<?php echo $tag['id']; ?>" 
+                                                <?php echo in_array($tag['id'], $search_tags) ? 'checked' : ''; ?>
+                                                onchange="updateSelectedTags()">
+                                            <span class="tag-badge" style="background-color: <?php echo $tag['color']; ?>20; color: <?php echo $tag['color']; ?>;">
+                                                <?php echo htmlspecialchars($tag['name']); ?>
+                                            </span>
+                                            <span class="tag-count">(<?php echo $tag['reference_count']; ?>)</span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                    <?php if (empty($all_tags)): ?>
+                                        <div class="no-tags">暂无标签</div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <input type="hidden" id="search_tags" name="search_tags" value="<?php echo htmlspecialchars(implode(',', $search_tags)); ?>">
+                        </div>
                     </div>
                     <div class="search-actions">
                         <button type="submit" class="btn btn-primary">
@@ -212,52 +293,69 @@
                         <tr>
                             <th width="5%">ID</th>
                             <th width="8%">分类</th>
-                            <th width="22%">标题</th>
-                            <th width="28%">内容摘要</th>
-                            <th width="8%">发布人</th>
-                            <th width="7%">优先级</th>
-                            <th width="12%">发布时间</th>
-                            <th width="10%">操作</th>
+                            <th width="18%">标题</th>
+                            <th width="20%">内容摘要</th>
+                            <th width="12%">标签</th>
+                            <th width="6%">发布人</th>
+                            <th width="6%">优先级</th>
+                            <th width="11%">发布时间</th>
+                            <th width="14%">操作</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php while($row = $result->fetch_assoc()): ?>
+                        <?php while($row->valid()): $notice = $row->current(); $row->next(); ?>
                         <tr>
-                            <td><?php echo $row['id']; ?></td>
+                            <td><?php echo $notice['id']; ?></td>
                             <td>
-                                <?php if ($row['category_name']): ?>
-                                    <span class="category-badge" style="background-color: <?php echo htmlspecialchars($row['category_color']); ?>20; color: <?php echo htmlspecialchars($row['category_color']); ?>;">
-                                        <?php echo htmlspecialchars(($row['category_emoji'] ? $row['category_emoji'] . ' ' : '') . $row['category_name']); ?>
+                                <?php if ($notice['category_name']): ?>
+                                    <span class="category-badge" style="background-color: <?php echo htmlspecialchars($notice['category_color']); ?>20; color: <?php echo htmlspecialchars($notice['category_color']); ?>;">
+                                        <?php echo htmlspecialchars(($notice['category_emoji'] ? $notice['category_emoji'] . ' ' : '') . $notice['category_name']); ?>
                                     </span>
                                 <?php else: ?>
                                     <span class="text-muted">-</span>
                                 <?php endif; ?>
                             </td>
                             <td class="notice-title-cell">
-                                <?php echo htmlspecialchars($row['title']); ?>
+                                <?php echo htmlspecialchars($notice['title']); ?>
                             </td>
                             <td class="notice-content-cell">
                                 <?php 
-                                $content = htmlspecialchars($row['content']);
-                                echo mb_substr($content, 0, 60, 'UTF-8') . (mb_strlen($content, 'UTF-8') > 60 ? '...' : ''); 
+                                $content = htmlspecialchars($notice['content']);
+                                echo mb_substr($content, 0, 40, 'UTF-8') . (mb_strlen($content, 'UTF-8') > 40 ? '...' : ''); 
                                 ?>
                             </td>
-                            <td><?php echo htmlspecialchars($row['author']); ?></td>
                             <td>
-                                <span class="priority-badge priority-<?php echo $row['priority']; ?>">
+                                <?php if (isset($notice_tags[$notice['id']]) && !empty($notice_tags[$notice['id']])): ?>
+                                    <div class="notice-tags">
+                                        <?php foreach (array_slice($notice_tags[$notice['id']], 0, 3) as $tag): ?>
+                                            <span class="tag-badge" style="background-color: <?php echo htmlspecialchars($tag['color']); ?>20; color: <?php echo htmlspecialchars($tag['color']); ?>;" title="<?php echo htmlspecialchars($tag['name']); ?>">
+                                                <?php echo htmlspecialchars($tag['name']); ?>
+                                            </span>
+                                        <?php endforeach; ?>
+                                        <?php if (count($notice_tags[$notice['id']]) > 3): ?>
+                                            <span class="tag-more">+<?php echo count($notice_tags[$notice['id']]) - 3; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?php echo htmlspecialchars($notice['author']); ?></td>
+                            <td>
+                                <span class="priority-badge priority-<?php echo $notice['priority']; ?>">
                                     <?php 
-                                    echo ['high' => '高', 'medium' => '中', 'low' => '低'][$row['priority']]; 
+                                    echo ['high' => '高', 'medium' => '中', 'low' => '低'][$notice['priority']]; 
                                     ?>
                                 </span>
                             </td>
-                            <td><?php echo date('Y-m-d H:i', strtotime($row['publish_date'])); ?></td>
+                            <td><?php echo date('Y-m-d H:i', strtotime($notice['publish_date'])); ?></td>
                             <td class="action-buttons">
-                                <a href="add_notice.php?id=<?php echo $row['id']; ?>" class="btn-icon-action edit" title="编辑" data-permission="notice:edit">
+                                <a href="add_notice.php?id=<?php echo $notice['id']; ?>" class="btn-icon-action edit" title="编辑" data-permission="notice:edit">
                                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13M18.5 2.5C18.8978 2.1022 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.1022 21.5 2.5C21.8978 2.8978 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.1022 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
                                 </a>
-                                <a href="?delete=<?php echo $row['id']; ?>&page=<?php echo $page; ?><?php echo !empty($search_title) ? '&search_title=' . urlencode($search_title) : ''; ?><?php echo !empty($search_author) ? '&search_author=' . urlencode($search_author) : ''; ?><?php echo !empty($search_priority) ? '&search_priority=' . urlencode($search_priority) : ''; ?><?php echo !empty($search_category) ? '&search_category=' . urlencode($search_category) : ''; ?>" 
+                                <a href="?delete=<?php echo $notice['id']; ?>&page=<?php echo $page; ?><?php echo !empty($search_title) ? '&search_title=' . urlencode($search_title) : ''; ?><?php echo !empty($search_author) ? '&search_author=' . urlencode($search_author) : ''; ?><?php echo !empty($search_priority) ? '&search_priority=' . urlencode($search_priority) : ''; ?><?php echo !empty($search_category) ? '&search_category=' . urlencode($search_category) : ''; ?><?php echo !empty($search_tags) ? '&search_tags=' . urlencode(implode(',', $search_tags)) : ''; ?>" 
                                    class="btn-icon-action delete" 
                                    title="删除"
                                    data-permission="notice:delete"
@@ -290,6 +388,7 @@
                 if (!empty($search_author)) $query_params[] = 'search_author=' . urlencode($search_author);
                 if (!empty($search_priority)) $query_params[] = 'search_priority=' . urlencode($search_priority);
                 if (!empty($search_category)) $query_params[] = 'search_category=' . urlencode($search_category);
+                if (!empty($search_tags)) $query_params[] = 'search_tags=' . urlencode(implode(',', $search_tags));
                 $query_string = !empty($query_params) ? '&' . implode('&', $query_params) : '';
                 
                 // 上一页
@@ -352,9 +451,75 @@
     </footer>
 
     <?php
-    $stmt->close();
     closeConnection($conn);
     ?>
     <script src="app.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tagSelector = document.getElementById('tagSelector');
+        const tagDropdown = document.getElementById('tagDropdown');
+        
+        if (tagSelector && tagDropdown) {
+            tagSelector.addEventListener('click', function(e) {
+                e.stopPropagation();
+                tagDropdown.classList.toggle('show');
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.tag-multi-select')) {
+                    tagDropdown.classList.remove('show');
+                }
+            });
+        }
+
+        updateSelectedTagsDisplay();
+    });
+
+    function updateSelectedTags() {
+        const checkboxes = document.querySelectorAll('input[name="search_tag_checkbox"]:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        document.getElementById('search_tags').value = selectedIds.join(',');
+        updateSelectedTagsDisplay();
+    }
+
+    function updateSelectedTagsDisplay() {
+        const selector = document.getElementById('tagSelector');
+        const hiddenInput = document.getElementById('search_tags');
+        if (!selector || !hiddenInput) return;
+
+        const selectedIds = hiddenInput.value ? hiddenInput.value.split(',').map(Number) : [];
+        
+        if (selectedIds.length === 0) {
+            selector.innerHTML = '<span class="tag-selector-placeholder">点击选择标签...</span>';
+            return;
+        }
+
+        const allTags = <?php echo json_encode($all_tags); ?>;
+        const selectedTags = allTags.filter(t => selectedIds.includes(t.id));
+
+        selector.innerHTML = selectedTags.map(tag => `
+            <span class="tag-item" style="background-color: ${tag.color}20; color: ${tag.color};">
+                ${escapeHtml(tag.name)}
+                <button type="button" class="tag-remove" onclick="removeSearchTag(${tag.id}, event)">×</button>
+            </span>
+        `).join('');
+    }
+
+    function removeSearchTag(tagId, event) {
+        event.stopPropagation();
+        const checkbox = document.querySelector(`input[name="search_tag_checkbox"][value="${tagId}"]`);
+        if (checkbox) {
+            checkbox.checked = false;
+            updateSelectedTags();
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    </script>
 </body>
 </html>

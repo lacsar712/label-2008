@@ -37,6 +37,21 @@
         require_permission('notice:create');
     }
     
+    // 获取公告已有标签（编辑模式）
+    $notice_tags = [];
+    if ($edit_mode && $notice) {
+        $conn = getConnection();
+        $stmt = $conn->prepare("SELECT t.* FROM tags t INNER JOIN notice_tags nt ON t.id = nt.tag_id WHERE nt.notice_id = ? ORDER BY t.reference_count DESC, t.id ASC");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            $notice_tags[] = $row;
+        }
+        $stmt->close();
+        closeConnection($conn);
+    }
+
     // 处理表单提交
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (isset($_POST['id']) && !empty($_POST['id'])) {
@@ -51,6 +66,15 @@
         $status = sanitize($_POST['status']);
         $category_id = isset($_POST['category_id']) && !empty($_POST['category_id']) ? intval($_POST['category_id']) : null;
         $author_id = isset($_POST['author_id']) ? intval($_POST['author_id']) : null;
+        $tag_ids = isset($_POST['tag_ids']) ? json_decode($_POST['tag_ids'], true) : [];
+        $tag_names = isset($_POST['tag_names']) ? json_decode($_POST['tag_names'], true) : [];
+        
+        if (!is_array($tag_ids)) {
+            $tag_ids = [];
+        }
+        if (!is_array($tag_names)) {
+            $tag_names = [];
+        }
         
         if (empty($author) && is_logged_in()) {
             $current_user = get_current_user();
@@ -61,35 +85,118 @@
         }
         
         $conn = getConnection();
+        $conn->begin_transaction();
         
-        if (isset($_POST['id']) && !empty($_POST['id'])) {
-            // 更新公告
-            $id = intval($_POST['id']);
-            $stmt = $conn->prepare("UPDATE notices SET title=?, content=?, author=?, author_id=?, priority=?, status=?, category_id=? WHERE id=?");
-            $stmt->bind_param("sssissii", $title, $content, $author, $author_id, $priority, $status, $category_id, $id);
+        try {
+            $notice_id = null;
             
-            if ($stmt->execute()) {
-                $success_message = "公告更新成功！";
+            if (isset($_POST['id']) && !empty($_POST['id'])) {
+                // 更新公告
+                $notice_id = intval($_POST['id']);
+                $stmt = $conn->prepare("UPDATE notices SET title=?, content=?, author=?, author_id=?, priority=?, status=?, category_id=? WHERE id=?");
+                $stmt->bind_param("sssissii", $title, $content, $author, $author_id, $priority, $status, $category_id, $notice_id);
+                
+                if (!$stmt->execute()) {
+                    throw new Exception("更新失败: " . $conn->error);
+                }
+                $stmt->close();
             } else {
-                $error_message = "更新失败: " . $conn->error;
-            }
-            $stmt->close();
-        } else {
-            // 添加新公告
-            if ($author_id) {
-                $stmt = $conn->prepare("INSERT INTO notices (title, content, author, author_id, priority, status, category_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("sssisssi", $title, $content, $author, $author_id, $priority, $status, $category_id);
-            } else {
-                $stmt = $conn->prepare("INSERT INTO notices (title, content, author, priority, status, category_id) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("sssssi", $title, $content, $author, $priority, $status, $category_id);
+                // 添加新公告
+                if ($author_id) {
+                    $stmt = $conn->prepare("INSERT INTO notices (title, content, author, author_id, priority, status, category_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->bind_param("sssisssi", $title, $content, $author, $author_id, $priority, $status, $category_id);
+                } else {
+                    $stmt = $conn->prepare("INSERT INTO notices (title, content, author, priority, status, category_id) VALUES (?, ?, ?, ?, ?, ?)");
+                    $stmt->bind_param("sssssi", $title, $content, $author, $priority, $status, $category_id);
+                }
+                
+                if (!$stmt->execute()) {
+                    throw new Exception("添加失败: " . $conn->error);
+                }
+                $notice_id = $conn->insert_id;
+                $stmt->close();
             }
             
-            if ($stmt->execute()) {
-                $success_message = "公告添加成功！";
-            } else {
-                $error_message = "添加失败: " . $conn->error;
+            // 处理标签：先创建新标签（通过名称），再设置关联
+            $final_tag_ids = $tag_ids;
+            
+            // 创建新标签（如果有通过名称添加的标签）
+            if (!empty($tag_names)) {
+                foreach ($tag_names as $tag_name) {
+                    $tag_name = trim($tag_name);
+                    if (empty($tag_name)) continue;
+                    
+                    // 检查标签是否已存在
+                    $check_stmt = $conn->prepare("SELECT id FROM tags WHERE name = ?");
+                    $check_stmt->bind_param("s", $tag_name);
+                    $check_stmt->execute();
+                    $check_result = $check_stmt->get_result();
+                    
+                    if ($check_result->num_rows > 0) {
+                        $existing_tag = $check_result->fetch_assoc();
+                        $final_tag_ids[] = intval($existing_tag['id']);
+                    } else {
+                        // 创建新标签
+                        $color = '#' . substr(md5($tag_name), 0, 6);
+                        $insert_stmt = $conn->prepare("INSERT INTO tags (name, color) VALUES (?, ?)");
+                        $insert_stmt->bind_param("ss", $tag_name, $color);
+                        if ($insert_stmt->execute()) {
+                            $final_tag_ids[] = intval($conn->insert_id);
+                        }
+                        $insert_stmt->close();
+                    }
+                    $check_stmt->close();
+                }
             }
-            $stmt->close();
+            
+            // 设置公告标签关联
+            $final_tag_ids = array_unique(array_map('intval', $final_tag_ids));
+            $final_tag_ids = array_filter($final_tag_ids, function($id) {
+                return $id > 0;
+            });
+            
+            // 获取旧标签ID用于更新引用计数（必须在删除前查询）
+            $old_tags_stmt = $conn->prepare("SELECT tag_id FROM notice_tags WHERE notice_id = ?");
+            $old_tags_stmt->bind_param("i", $notice_id);
+            $old_tags_stmt->execute();
+            $old_tags_result = $old_tags_stmt->get_result();
+            $old_tag_ids = [];
+            while ($row = $old_tags_result->fetch_assoc()) {
+                $old_tag_ids[] = $row['tag_id'];
+            }
+            $old_tags_stmt->close();
+            
+            // 删除旧关联
+            $delete_nt_stmt = $conn->prepare("DELETE FROM notice_tags WHERE notice_id = ?");
+            $delete_nt_stmt->bind_param("i", $notice_id);
+            $delete_nt_stmt->execute();
+            $delete_nt_stmt->close();
+            
+            // 插入新关联
+            if (!empty($final_tag_ids)) {
+                $insert_nt_stmt = $conn->prepare("INSERT IGNORE INTO notice_tags (notice_id, tag_id) VALUES (?, ?)");
+                foreach ($final_tag_ids as $tag_id) {
+                    $insert_nt_stmt->bind_param("ii", $notice_id, $tag_id);
+                    $insert_nt_stmt->execute();
+                }
+                $insert_nt_stmt->close();
+            }
+            
+            // 更新所有相关标签的引用计数
+            $all_related_tag_ids = array_unique(array_merge($old_tag_ids, $final_tag_ids));
+            foreach ($all_related_tag_ids as $tag_id) {
+                $update_count_stmt = $conn->prepare("UPDATE tags SET reference_count = (SELECT COUNT(*) FROM notice_tags WHERE tag_id = ?) WHERE id = ?");
+                $update_count_stmt->bind_param("ii", $tag_id, $tag_id);
+                $update_count_stmt->execute();
+                $update_count_stmt->close();
+            }
+            
+            $conn->commit();
+            $success_message = isset($_POST['id']) && !empty($_POST['id']) ? "公告更新成功！" : "公告添加成功！";
+            
+        } catch (Exception $e) {
+            $conn->rollback();
+            $error_message = $e->getMessage();
         }
         
         closeConnection($conn);
@@ -151,10 +258,12 @@
                 </div>
                 <?php endif; ?>
 
-                <form method="POST" action="" class="notice-form">
+                <form method="POST" action="" class="notice-form" id="noticeForm">
                     <?php if ($edit_mode): ?>
                     <input type="hidden" name="id" value="<?php echo $notice['id']; ?>">
                     <?php endif; ?>
+                    <input type="hidden" name="tag_ids" id="tagIds" value='<?php echo htmlspecialchars(json_encode(array_column($notice_tags, 'id'))); ?>'>
+                    <input type="hidden" name="tag_names" id="tagNames" value='[]'>
                     
                     <div class="form-group">
                         <label for="title">公告标题 <span class="required">*</span></label>
@@ -208,6 +317,25 @@
                         </div>
                     </div>
 
+                    <div class="form-group">
+                        <label>标签</label>
+                        <div class="tag-input-wrapper">
+                            <div class="selected-tags" id="selectedTags">
+                                <?php foreach ($notice_tags as $tag): ?>
+                                    <span class="tag-item" style="background-color: <?php echo htmlspecialchars($tag['color']); ?>20; color: <?php echo htmlspecialchars($tag['color']); ?>;" data-id="<?php echo $tag['id']; ?>" data-name="<?php echo htmlspecialchars($tag['name']); ?>">
+                                        <?php echo htmlspecialchars($tag['name']); ?>
+                                        <button type="button" class="tag-remove" onclick="removeTag(<?php echo $tag['id']; ?>, null)">×</button>
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
+                            <div class="tag-input-container">
+                                <input type="text" id="tagSearchInput" placeholder="输入标签名称，回车添加，或搜索已有标签..." autocomplete="off">
+                                <div class="tag-suggestions" id="tagSuggestions"></div>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">输入标签名称后按回车添加，或从搜索结果中选择已有标签。点击标签上的 × 可移除标签。</small>
+                    </div>
+
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">
                             <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -234,5 +362,300 @@
         </div>
     </footer>
     <script src="app.js"></script>
+    <script>
+    let selectedTagIds = <?php echo json_encode(array_column($notice_tags, 'id')); ?>;
+    let selectedTagNames = [];
+    let searchTimeout = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const tagInput = document.getElementById('tagSearchInput');
+        const suggestions = document.getElementById('tagSuggestions');
+
+        tagInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+            
+            if (query.length > 0) {
+                searchTimeout = setTimeout(() => searchTags(query), 300);
+            } else {
+                suggestions.innerHTML = '';
+                suggestions.style.display = 'none';
+            }
+        });
+
+        tagInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const value = this.value.trim();
+                if (value) {
+                    addNewTagName(value);
+                    this.value = '';
+                    suggestions.innerHTML = '';
+                    suggestions.style.display = 'none';
+                }
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.tag-input-container')) {
+                suggestions.innerHTML = '';
+                suggestions.style.display = 'none';
+            }
+        });
+
+        updateHiddenFields();
+    });
+
+    async function searchTags(query) {
+        const suggestions = document.getElementById('tagSuggestions');
+        
+        const result = await apiRequest(`tags/search?q=${encodeURIComponent(query)}`, 'GET');
+        if (result.code === 200 && result.data && result.data.length > 0) {
+            const filteredTags = result.data.filter(tag => !selectedTagIds.includes(tag.id));
+            
+            if (filteredTags.length > 0) {
+                suggestions.innerHTML = filteredTags.map(tag => `
+                    <div class="tag-suggestion-item" onclick="selectSuggestedTag(${tag.id}, '${escapeHtml(tag.name)}', '${tag.color}')">
+                        <span class="tag-badge" style="background-color: ${tag.color}20; color: ${tag.color};">
+                            ${escapeHtml(tag.name)}
+                        </span>
+                        <span class="tag-ref-count">${tag.reference_count} 次引用</span>
+                    </div>
+                `).join('');
+                suggestions.style.display = 'block';
+            } else {
+                suggestions.innerHTML = `<div class="tag-suggestion-item no-results">输入"${escapeHtml(query)}"并按回车创建新标签</div>`;
+                suggestions.style.display = 'block';
+            }
+        } else {
+            suggestions.innerHTML = `<div class="tag-suggestion-item no-results">输入"${escapeHtml(query)}"并按回车创建新标签</div>`;
+            suggestions.style.display = 'block';
+        }
+    }
+
+    function selectSuggestedTag(id, name, color) {
+        if (selectedTagIds.includes(id)) return;
+        
+        selectedTagIds.push(id);
+        renderTagItem(id, name, color);
+        document.getElementById('tagSearchInput').value = '';
+        document.getElementById('tagSuggestions').innerHTML = '';
+        document.getElementById('tagSuggestions').style.display = 'none';
+        updateHiddenFields();
+    }
+
+    function addNewTagName(name) {
+        name = name.trim();
+        if (!name) return;
+        
+        if (selectedTagNames.includes(name)) {
+            showToast('该标签已添加', 'error');
+            return;
+        }
+        
+        selectedTagNames.push(name);
+        const color = '#' + md5(name).substring(0, 6);
+        renderTagItem(null, name, color, true);
+        updateHiddenFields();
+    }
+
+    function renderTagItem(id, name, color, isNew = false) {
+        const container = document.getElementById('selectedTags');
+        const tagSpan = document.createElement('span');
+        tagSpan.className = 'tag-item';
+        tagSpan.style.backgroundColor = color + '20';
+        tagSpan.style.color = color;
+        tagSpan.dataset.id = id || '';
+        tagSpan.dataset.name = name;
+        tagSpan.innerHTML = `
+            ${escapeHtml(name)}
+            <button type="button" class="tag-remove" onclick="removeTag(${id}, '${escapeHtml(name)}')">×</button>
+        `;
+        container.appendChild(tagSpan);
+    }
+
+    function removeTag(id, name) {
+        if (id !== null) {
+            selectedTagIds = selectedTagIds.filter(tid => tid !== id);
+        }
+        if (name !== null) {
+            selectedTagNames = selectedTagNames.filter(tname => tname !== name);
+        }
+        
+        const container = document.getElementById('selectedTags');
+        const tagItems = container.querySelectorAll('.tag-item');
+        tagItems.forEach(item => {
+            const itemId = parseInt(item.dataset.id) || null;
+            const itemName = item.dataset.name;
+            if ((id !== null && itemId === id) || (name !== null && itemName === name)) {
+                item.remove();
+            }
+        });
+        
+        updateHiddenFields();
+    }
+
+    function updateHiddenFields() {
+        document.getElementById('tagIds').value = JSON.stringify(selectedTagIds);
+        document.getElementById('tagNames').value = JSON.stringify(selectedTagNames);
+    }
+
+    function md5(string) {
+        function rotateLeft(lValue, iShiftBits) {
+            return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits));
+        }
+        function addUnsigned(lX, lY) {
+            var lX4, lY4, lX8, lY8, lResult;
+            lX8 = (lX & 0x80000000);
+            lY8 = (lY & 0x80000000);
+            lX4 = (lX & 0x40000000);
+            lY4 = (lY & 0x40000000);
+            lResult = (lX & 0x3FFFFFFF) + (lY & 0x3FFFFFFF);
+            if (lX4 & lY4) return (lResult ^ 0x80000000 ^ lX8 ^ lY8);
+            if (lX4 | lY4) {
+                if (lResult & 0x40000000) return (lResult ^ 0xC0000000 ^ lX8 ^ lY8);
+                else return (lResult ^ 0x40000000 ^ lX8 ^ lY8);
+            } else return (lResult ^ lX8 ^ lY8);
+        }
+        function F(x, y, z) { return (x & y) | ((~x) & z); }
+        function G(x, y, z) { return (x & z) | (y & (~z)); }
+        function H(x, y, z) { return (x ^ y ^ z); }
+        function I(x, y, z) { return (y ^ (x | (~z))); }
+        function FF(a, b, c, d, x, s, ac) {
+            a = addUnsigned(a, addUnsigned(addUnsigned(F(b, c, d), x), ac));
+            return addUnsigned(rotateLeft(a, s), b);
+        }
+        function GG(a, b, c, d, x, s, ac) {
+            a = addUnsigned(a, addUnsigned(addUnsigned(G(b, c, d), x), ac));
+            return addUnsigned(rotateLeft(a, s), b);
+        }
+        function HH(a, b, c, d, x, s, ac) {
+            a = addUnsigned(a, addUnsigned(addUnsigned(H(b, c, d), x), ac));
+            return addUnsigned(rotateLeft(a, s), b);
+        }
+        function II(a, b, c, d, x, s, ac) {
+            a = addUnsigned(a, addUnsigned(addUnsigned(I(b, c, d), x), ac));
+            return addUnsigned(rotateLeft(a, s), b);
+        }
+        function convertToWordArray(str) {
+            var lWordCount;
+            var lMessageLength = str.length;
+            var lNumberOfWords_temp1 = lMessageLength + 8;
+            var lNumberOfWords_temp2 = (lNumberOfWords_temp1 - (lNumberOfWords_temp1 % 64)) / 64;
+            var lNumberOfWords = (lNumberOfWords_temp2 + 1) * 16;
+            var lWordArray = new Array(lNumberOfWords - 1);
+            var lBytePosition = 0;
+            var lByteCount = 0;
+            while (lByteCount < lMessageLength) {
+                lWordCount = (lByteCount - (lByteCount % 4)) / 4;
+                lBytePosition = (lByteCount % 4) * 8;
+                lWordArray[lWordCount] = (lWordArray[lWordCount] | (str.charCodeAt(lByteCount) << lBytePosition));
+                lByteCount++;
+            }
+            lWordCount = (lByteCount - (lByteCount % 4)) / 4;
+            lBytePosition = (lByteCount % 4) * 8;
+            lWordArray[lWordCount] = lWordArray[lWordCount] | (0x80 << lBytePosition);
+            lWordArray[lNumberOfWords - 2] = lMessageLength << 3;
+            lWordArray[lNumberOfWords - 1] = lMessageLength >>> 29;
+            return lWordArray;
+        }
+        function wordToHex(lValue) {
+            var wordToHexValue = '', wordToHexValue_temp = '', lByte, lCount;
+            for (lCount = 0; lCount <= 3; lCount++) {
+                lByte = (lValue >>> (lCount * 8)) & 255;
+                wordToHexValue_temp = '0' + lByte.toString(16);
+                wordToHexValue = wordToHexValue + wordToHexValue_temp.substr(wordToHexValue_temp.length - 2, 2);
+            }
+            return wordToHexValue;
+        }
+        var x = convertToWordArray(string);
+        var a = 0x67452301, b = 0xEFCDAB89, c = 0x98BADCFE, d = 0x10325476;
+        var S11 = 7, S12 = 12, S13 = 17, S14 = 22;
+        var S21 = 5, S22 = 9, S23 = 14, S24 = 20;
+        var S31 = 4, S32 = 11, S33 = 16, S34 = 23;
+        var S41 = 6, S42 = 10, S43 = 15, S44 = 21;
+        var k;
+        var AA, BB, CC, DD;
+        for (k = 0; k < x.length; k += 16) {
+            AA = a; BB = b; CC = c; DD = d;
+            a = FF(a, b, c, d, x[k + 0], S11, 0xD76AA478);
+            d = FF(d, a, b, c, x[k + 1], S12, 0xE8C7B756);
+            c = FF(c, d, a, b, x[k + 2], S13, 0x242070DB);
+            b = FF(b, c, d, a, x[k + 3], S14, 0xC1BDCEEE);
+            a = FF(a, b, c, d, x[k + 4], S11, 0xF57C0FAF);
+            d = FF(d, a, b, c, x[k + 5], S12, 0x4787C62A);
+            c = FF(c, d, a, b, x[k + 6], S13, 0xA8304613);
+            b = FF(b, c, d, a, x[k + 7], S14, 0xFD469501);
+            a = FF(a, b, c, d, x[k + 8], S11, 0x698098D8);
+            d = FF(d, a, b, c, x[k + 9], S12, 0x8B44F7AF);
+            c = FF(c, d, a, b, x[k + 10], S13, 0xFFFF5BB1);
+            b = FF(b, c, d, a, x[k + 11], S14, 0x895CD7BE);
+            a = FF(a, b, c, d, x[k + 12], S11, 0x6B901122);
+            d = FF(d, a, b, c, x[k + 13], S12, 0xFD987193);
+            c = FF(c, d, a, b, x[k + 14], S13, 0xA679438E);
+            b = FF(b, c, d, a, x[k + 15], S14, 0x49B40821);
+            a = GG(a, b, c, d, x[k + 1], S21, 0xF61E2562);
+            d = GG(d, a, b, c, x[k + 6], S22, 0xC040B340);
+            c = GG(c, d, a, b, x[k + 11], S23, 0x265E5A51);
+            b = GG(b, c, d, a, x[k + 0], S24, 0xE9B6C7AA);
+            a = GG(a, b, c, d, x[k + 5], S21, 0xD62F105D);
+            d = GG(d, a, b, c, x[k + 10], S22, 0x02441453);
+            c = GG(c, d, a, b, x[k + 15], S23, 0xD8A1E681);
+            b = GG(b, c, d, a, x[k + 4], S24, 0xE7D3FBC8);
+            a = GG(a, b, c, d, x[k + 9], S21, 0x21E1CDE6);
+            d = GG(d, a, b, c, x[k + 14], S22, 0xC33707D6);
+            c = GG(c, d, a, b, x[k + 3], S23, 0xF4D50D87);
+            b = GG(b, c, d, a, x[k + 8], S24, 0x455A14ED);
+            a = GG(a, b, c, d, x[k + 13], S21, 0xA9E3E905);
+            d = GG(d, a, b, c, x[k + 2], S22, 0xFCEFA3F8);
+            c = GG(c, d, a, b, x[k + 7], S23, 0x676F02D9);
+            b = GG(b, c, d, a, x[k + 12], S24, 0x8D2A4C8A);
+            a = HH(a, b, c, d, x[k + 5], S31, 0xFFFA3942);
+            d = HH(d, a, b, c, x[k + 8], S32, 0x8771F681);
+            c = HH(c, d, a, b, x[k + 11], S33, 0x6D9D6122);
+            b = HH(b, c, d, a, x[k + 14], S34, 0xFDE5380C);
+            a = HH(a, b, c, d, x[k + 1], S31, 0xA4BEEA44);
+            d = HH(d, a, b, c, x[k + 4], S32, 0x4BDECFA9);
+            c = HH(c, d, a, b, x[k + 7], S33, 0xF6BB4B60);
+            b = HH(b, c, d, a, x[k + 10], S34, 0xBEBFBC70);
+            a = HH(a, b, c, d, x[k + 13], S31, 0x289B7EC6);
+            d = HH(d, a, b, c, x[k + 0], S32, 0xEAA127FA);
+            c = HH(c, d, a, b, x[k + 3], S33, 0xD4EF3085);
+            b = HH(b, c, d, a, x[k + 6], S34, 0x04881D05);
+            a = HH(a, b, c, d, x[k + 9], S31, 0xD9D4D039);
+            d = HH(d, a, b, c, x[k + 12], S32, 0xE6DB99E5);
+            c = HH(c, d, a, b, x[k + 15], S33, 0x1FA27CF8);
+            b = HH(b, c, d, a, x[k + 2], S34, 0xC4AC5665);
+            a = II(a, b, c, d, x[k + 0], S41, 0xF4292244);
+            d = II(d, a, b, c, x[k + 7], S42, 0x432AFF97);
+            c = II(c, d, a, b, x[k + 14], S43, 0xAB9423A7);
+            b = II(b, c, d, a, x[k + 5], S44, 0xFC93A039);
+            a = II(a, b, c, d, x[k + 12], S41, 0x655B59C3);
+            d = II(d, a, b, c, x[k + 3], S42, 0x8F0CCC92);
+            c = II(c, d, a, b, x[k + 10], S43, 0xFFEFF47D);
+            b = II(b, c, d, a, x[k + 1], S44, 0x85845DD1);
+            a = II(a, b, c, d, x[k + 8], S41, 0x6FA87E4F);
+            d = II(d, a, b, c, x[k + 15], S42, 0xFE2CE6E0);
+            c = II(c, d, a, b, x[k + 6], S43, 0xA3014314);
+            b = II(b, c, d, a, x[k + 13], S44, 0x4E0811A1);
+            a = II(a, b, c, d, x[k + 4], S41, 0xF7537E82);
+            d = II(d, a, b, c, x[k + 11], S42, 0xBD3AF235);
+            c = II(c, d, a, b, x[k + 2], S43, 0x2AD7D2BB);
+            b = II(b, c, d, a, x[k + 9], S44, 0xEB86D391);
+            a = addUnsigned(a, AA);
+            b = addUnsigned(b, BB);
+            c = addUnsigned(c, CC);
+            d = addUnsigned(d, DD);
+        }
+        return (wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d)).toLowerCase();
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    </script>
 </body>
 </html>

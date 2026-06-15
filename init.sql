@@ -175,6 +175,51 @@ SELECT 1, id FROM permissions;
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 2, id FROM permissions WHERE category IN ('notice', 'category');
 
+-- 创建标签表
+CREATE TABLE IF NOT EXISTS tags (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE COMMENT '标签名称',
+    color VARCHAR(32) DEFAULT '#6366f1' COMMENT '标签颜色(十六进制)',
+    reference_count INT DEFAULT 0 COMMENT '引用次数',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_name (name),
+    INDEX idx_reference_count (reference_count)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 创建公告标签关联表
+CREATE TABLE IF NOT EXISTS notice_tags (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    notice_id INT NOT NULL COMMENT '公告ID',
+    tag_id INT NOT NULL COMMENT '标签ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    UNIQUE KEY unique_notice_tag (notice_id, tag_id),
+    INDEX idx_notice_id (notice_id),
+    INDEX idx_tag_id (tag_id),
+    FOREIGN KEY (notice_id) REFERENCES notices(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 插入标签相关权限
+INSERT INTO permissions (name, display_name, description, category) VALUES
+('tag:view', '查看标签', '查看标签列表', 'tag'),
+('tag:create', '创建标签', '添加新标签', 'tag'),
+('tag:edit', '编辑标签', '修改标签信息', 'tag'),
+('tag:delete', '删除标签', '删除标签', 'tag'),
+('tag:merge', '合并标签', '合并两个标签', 'tag');
+
+-- 为超级管理员分配标签权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 1, id FROM permissions WHERE category = 'tag';
+
+-- 为编辑分配标签管理权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 2, id FROM permissions WHERE category = 'tag';
+
+-- 为访客分配仅查看标签权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, id FROM permissions WHERE name = 'tag:view';
+
 -- 为访客分配仅查看权限
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 3, id FROM permissions WHERE name IN ('notice:view', 'category:view');

@@ -175,6 +175,17 @@
                     ?>
                 </div>
             </div>
+
+            <!-- 标签云 -->
+            <div class="tag-cloud-section">
+                <div class="section-header">
+                    <h3>标签云</h3>
+                    <a href="tags.php" class="view-all" data-permission="tag:view">管理标签 →</a>
+                </div>
+                <div class="tag-cloud" id="tagCloud">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -264,7 +264,37 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     loadCategoryCards();
+    loadTagCloud();
 });
+
+async function loadTagCloud() {
+    const container = document.getElementById('tagCloud');
+    if (!container) return;
+
+    const result = await apiRequest('tags/popular?limit=30', 'GET');
+    if (result.code === 200 && result.data && result.data.length > 0) {
+        const tags = result.data;
+        const maxCount = Math.max(...tags.map(t => t.reference_count), 1);
+        const minCount = Math.min(...tags.map(t => t.reference_count), 0);
+        
+        container.innerHTML = tags.map(tag => {
+            let fontSize = 14;
+            if (maxCount > minCount) {
+                fontSize = 12 + ((tag.reference_count - minCount) / (maxCount - minCount)) * 20;
+            }
+            return `
+                <a href="search_notice.php?search_tags=${tag.id}" 
+                   class="tag-cloud-item" 
+                   style="font-size: ${fontSize}px; color: ${tag.color};"
+                   title="${escapeHtml(tag.name)} (${tag.reference_count} 条公告)">
+                    ${escapeHtml(tag.name)}
+                </a>
+            `;
+        }).join('');
+    } else {
+        container.innerHTML = '<p class="no-data">暂无标签</p>';
+    }
+}
 
 async function loadCategoryCards() {
     const container = document.getElementById('categoryCards');
