@@ -317,7 +317,7 @@ require_once 'common.php';
 
             <!-- 公告列表 -->
             <div class="notices-table-container">
-                <?php if ($result->num_rows > 0): ?>
+                <?php if (count($notices_data) > 0): ?>
                 <table class="notices-table">
                     <thead>
                         <tr>
@@ -333,7 +333,7 @@ require_once 'common.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php while($row->valid()): $notice = $row->current(); $row->next(); ?>
+                        <?php while($result->valid()): $notice = $result->current(); $result->next(); ?>
                         <tr>
                             <td><?php echo $notice['id']; ?></td>
                             <td>
