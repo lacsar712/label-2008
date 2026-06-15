@@ -35,6 +35,12 @@ async function loadTypeStats() {
 }
 
 async function loadMessages() {
+    selectedIds = [];
+    const selectAllCb = document.getElementById('selectAllMessages');
+    if (selectAllCb) {
+        selectAllCb.checked = false;
+    }
+
     const listEl = document.getElementById('messagesList');
     const readFilter = document.getElementById('readFilter').value;
 
@@ -229,4 +235,15 @@ function renderPagination(pagination) {
 function goToPage(page) {
     currentPage = page;
     loadMessages();
+}
+
+async function refreshMessages() {
+    await Promise.all([
+        loadMessages(),
+        loadTypeStats()
+    ]);
+    if (typeof updateUnreadCount === 'function') {
+        updateUnreadCount();
+    }
+    showToast('消息列表已刷新', 'success');
 }
