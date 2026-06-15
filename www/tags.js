@@ -28,9 +28,13 @@ async function loadTags() {
     const result = await apiRequest(url, 'GET');
     if (result.code === 200) {
         allTags = result.data.list;
+        selectedIds = [];
         renderTags(allTags);
         renderPagination(result.data.pagination);
         totalPages = result.data.pagination.total_pages;
+        const selectAll = document.getElementById('selectAll');
+        if (selectAll) selectAll.checked = false;
+        updateBatchActions();
     } else {
         showToast(result.message, 'error');
     }
