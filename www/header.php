@@ -19,6 +19,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <li data-permission="category:view"><a href="categories.php" class="<?php echo $current_page == 'categories.php' ? 'active' : ''; ?>">分类管理</a></li>
             <li data-permission="role:view"><a href="roles.php" class="<?php echo $current_page == 'roles.php' ? 'active' : ''; ?>">角色管理</a></li>
             <li data-permission="tag:view"><a href="tags.php" class="<?php echo $current_page == 'tags.php' ? 'active' : ''; ?>">标签管理</a></li>
+            <li data-any-permission="notice:export,notice:import"><a href="data_import_export.php" class="<?php echo $current_page == 'data_import_export.php' ? 'active' : ''; ?>">数据导入导出</a></li>
             <li data-permission="user:view"><a href="user_roles.php" class="<?php echo $current_page == 'user_roles.php' ? 'active' : ''; ?>">用户角色</a></li>
         </ul>
         <div class="nav-user">

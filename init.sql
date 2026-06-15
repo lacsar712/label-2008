@@ -260,3 +260,16 @@ SELECT 2, id FROM permissions WHERE name = 'message:view';
 -- 为访客分配查看消息权限
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 3, id FROM permissions WHERE name = 'message:view';
+
+-- 插入数据导入导出相关权限
+INSERT INTO permissions (name, display_name, description, category) VALUES
+('notice:export', '导出公告', '导出公告数据为CSV/Excel', 'notice'),
+('notice:import', '导入公告', '从CSV/Excel批量导入公告', 'notice');
+
+-- 为超级管理员分配导入导出权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 1, id FROM permissions WHERE name IN ('notice:export', 'notice:import');
+
+-- 为编辑分配导入导出权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 2, id FROM permissions WHERE name IN ('notice:export', 'notice:import');
