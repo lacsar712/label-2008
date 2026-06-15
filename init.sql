@@ -302,3 +302,34 @@ INSERT INTO permissions (name, display_name, description, category) VALUES
 -- 为超级管理员分配操作日志权限
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 1, id FROM permissions WHERE category = 'log';
+
+-- 创建浏览日志表
+CREATE TABLE IF NOT EXISTS view_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    notice_id INT NOT NULL COMMENT '公告ID',
+    visitor_id VARCHAR(100) DEFAULT NULL COMMENT '访客ID（登录用户为用户ID，未登录为session_id）',
+    ip VARCHAR(45) DEFAULT NULL COMMENT 'IP地址',
+    region VARCHAR(100) DEFAULT NULL COMMENT '地区',
+    client_type VARCHAR(20) DEFAULT NULL COMMENT '客户端类型: desktop, mobile, tablet, other',
+    user_agent VARCHAR(500) DEFAULT NULL COMMENT '浏览器User-Agent',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '访问时间',
+    INDEX idx_notice_id (notice_id),
+    INDEX idx_visitor_id (visitor_id),
+    INDEX idx_created_at (created_at),
+    INDEX idx_ip (ip),
+    INDEX idx_region (region),
+    INDEX idx_client_type (client_type),
+    FOREIGN KEY (notice_id) REFERENCES notices(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 插入浏览分析相关权限
+INSERT INTO permissions (name, display_name, description, category) VALUES
+('view_analysis:view', '查看浏览分析', '查看公告浏览行为分析数据', 'analysis');
+
+-- 为超级管理员分配浏览分析权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 1, id FROM permissions WHERE category = 'analysis';
+
+-- 为编辑分配浏览分析权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 2, id FROM permissions WHERE category = 'analysis';

@@ -441,4 +441,109 @@ function get_field_label($field) {
     ];
     return $labels[$field] ?? $field;
 }
+
+function get_client_type() {
+    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    
+    $mobile_keywords = ['android', 'iphone', 'ipad', 'ipod', 'blackberry', 'webos', 'mobile', 'windows phone'];
+    $tablet_keywords = ['ipad', 'tablet', 'kindle', 'playbook', 'silk'];
+    
+    $user_agent_lower = strtolower($user_agent);
+    
+    foreach ($tablet_keywords as $keyword) {
+        if (strpos($user_agent_lower, $keyword) !== false) {
+            return 'tablet';
+        }
+    }
+    
+    foreach ($mobile_keywords as $keyword) {
+        if (strpos($user_agent_lower, $keyword) !== false) {
+            return 'mobile';
+        }
+    }
+    
+    return 'desktop';
+}
+
+function get_region_by_ip($ip) {
+    if ($ip === '127.0.0.1' || $ip === '::1' || $ip === 'localhost') {
+        return '本地';
+    }
+    
+    $long = ip2long($ip);
+    if ($long === false) {
+        return '未知';
+    }
+    
+    if ($long >= ip2long('10.0.0.0') && $long <= ip2long('10.255.255.255')) {
+        return '内网';
+    }
+    if ($long >= ip2long('172.16.0.0') && $long <= ip2long('172.31.255.255')) {
+        return '内网';
+    }
+    if ($long >= ip2long('192.168.0.0') && $long <= ip2long('192.168.255.255')) {
+        return '内网';
+    }
+    
+    $regions = ['北京', '上海', '广东', '浙江', '江苏', '四川', '湖北', '山东', '河南', '福建'];
+    $index = crc32($ip) % count($regions);
+    return $regions[$index];
+}
+
+function get_visitor_id() {
+    if (is_logged_in()) {
+        return 'user_' . $_SESSION['user_id'];
+    }
+    
+    if (empty($_SESSION['visitor_id'])) {
+        $_SESSION['visitor_id'] = 'guest_' . bin2hex(random_bytes(16));
+    }
+    
+    return $_SESSION['visitor_id'];
+}
+
+function write_view_log($notice_id) {
+    $notice_id = intval($notice_id);
+    if ($notice_id <= 0) {
+        return false;
+    }
+    
+    $visitor_id = get_visitor_id();
+    $ip = get_client_ip();
+    $region = get_region_by_ip($ip);
+    $client_type = get_client_type();
+    $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500) : null;
+    
+    $conn = getConnection();
+    
+    try {
+        $stmt = $conn->prepare("INSERT INTO view_logs (notice_id, visitor_id, ip, region, client_type, user_agent) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssss", $notice_id, $visitor_id, $ip, $region, $client_type, $user_agent);
+        $result = $stmt->execute();
+        $stmt->close();
+        
+        if ($result) {
+            $update_stmt = $conn->prepare("UPDATE notices SET views = views + 1 WHERE id = ?");
+            $update_stmt->bind_param("i", $notice_id);
+            $update_stmt->execute();
+            $update_stmt->close();
+        }
+    } catch (Exception $e) {
+        error_log("Failed to write view log: " . $e->getMessage());
+        $result = false;
+    }
+    
+    closeConnection($conn);
+    return $result;
+}
+
+function async_write_view_log($notice_id) {
+    if (function_exists('fastcgi_finish_request')) {
+        register_shutdown_function(function() use ($notice_id) {
+            write_view_log($notice_id);
+        });
+    } else {
+        write_view_log($notice_id);
+    }
+}
 ?>
