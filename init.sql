@@ -430,3 +430,77 @@ INSERT INTO users (username, email, password, nickname, bio, status) VALUES
 -- 为默认管理员分配 super_admin 角色
 INSERT INTO user_roles (user_id, role_id)
 SELECT u.id, r.id FROM users u, roles r WHERE u.username = 'admin' AND r.name = 'super_admin';
+
+-- 插入模拟访问日志数据（近30天）
+INSERT INTO view_logs (notice_id, visitor_id, ip, region, client_type, user_agent, created_at) VALUES
+-- 今日数据
+(1, 'user_1', '192.168.1.10', '北京', 'desktop', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0', DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+(1, 'user_2', '192.168.1.11', '上海', 'mobile', 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0) AppleWebKit/605.1.15', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(2, 'user_1', '192.168.1.10', '北京', 'desktop', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0', DATE_SUB(NOW(), INTERVAL 3 HOUR)),
+(3, 'user_3', '192.168.1.12', '广州', 'desktop', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/120.0', DATE_SUB(NOW(), INTERVAL 4 HOUR)),
+(1, 'user_4', '192.168.1.13', '深圳', 'mobile', 'Mozilla/5.0 (Android 13; Mobile) Chrome/120.0', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
+(2, 'user_5', '192.168.1.14', '杭州', 'desktop', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edge/120.0', DATE_SUB(NOW(), INTERVAL 6 HOUR)),
+(4, 'user_1', '192.168.1.10', '北京', 'desktop', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0', DATE_SUB(NOW(), INTERVAL 7 HOUR)),
+(5, 'guest_abc123', '192.168.1.15', '成都', 'mobile', 'Mozilla/5.0 (Linux; Android 12) Chrome/119.0', DATE_SUB(NOW(), INTERVAL 8 HOUR)),
+(1, 'user_6', '192.168.1.16', '武汉', 'desktop', 'Mozilla/5.0 (Windows NT 11; Win64; x64) Chrome/120.0', DATE_SUB(NOW(), INTERVAL 9 HOUR)),
+(3, 'user_7', '192.168.1.17', '西安', 'tablet', 'Mozilla/5.0 (iPad; CPU OS 17_0) AppleWebKit/605.1.15', DATE_SUB(NOW(), INTERVAL 10 HOUR)),
+
+-- 昨日数据
+(1, 'user_1', '192.168.1.10', '北京', 'desktop', 'Mozilla/5.0 Chrome/120.0', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(1, 'user_8', '192.168.1.18', '南京', 'mobile', 'Mozilla/5.0 iOS 16.0', DATE_SUB(NOW(), INTERVAL 25 HOUR)),
+(2, 'user_9', '192.168.1.19', '重庆', 'desktop', 'Mozilla/5.0 Chrome/120.0', DATE_SUB(NOW(), INTERVAL 26 HOUR)),
+(2, 'user_10', '192.168.1.20', '天津', 'desktop', 'Mozilla/5.0 Edge/120.0', DATE_SUB(NOW(), INTERVAL 27 HOUR)),
+(3, 'user_11', '192.168.1.21', '苏州', 'mobile', 'Mozilla/5.0 Android 13', DATE_SUB(NOW(), INTERVAL 28 HOUR)),
+(4, 'user_12', '192.168.1.22', '长沙', 'desktop', 'Mozilla/5.0 Chrome/119.0', DATE_SUB(NOW(), INTERVAL 30 HOUR)),
+(5, 'user_13', '192.168.1.23', '郑州', 'mobile', 'Mozilla/5.0 Android 12', DATE_SUB(NOW(), INTERVAL 32 HOUR)),
+(1, 'user_14', '192.168.1.24', '青岛', 'desktop', 'Mozilla/5.0 Chrome/120.0', DATE_SUB(NOW(), INTERVAL 34 HOUR)),
+(6, 'user_15', '192.168.1.25', '大连', 'desktop', 'Mozilla/5.0 Firefox/120.0', DATE_SUB(NOW(), INTERVAL 36 HOUR)),
+(1, 'user_16', '192.168.1.26', '厦门', 'mobile', 'Mozilla/5.0 iOS 17.0', DATE_SUB(NOW(), INTERVAL 38 HOUR)),
+
+-- 近7天数据
+(1, 'user_17', '192.168.1.27', '北京', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(1, 'user_18', '192.168.1.28', '上海', 'mobile', 'iOS 16.0', DATE_SUB(NOW(), INTERVAL 2 DAY + INTERVAL 2 HOUR)),
+(2, 'user_19', '192.168.1.29', '广州', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 2 DAY + INTERVAL 4 HOUR)),
+(3, 'user_20', '192.168.1.30', '深圳', 'desktop', 'Edge/120.0', DATE_SUB(NOW(), INTERVAL 2 DAY + INTERVAL 6 HOUR)),
+(4, 'user_21', '192.168.1.31', '杭州', 'mobile', 'Android 13', DATE_SUB(NOW(), INTERVAL 2 DAY + INTERVAL 8 HOUR)),
+(5, 'user_22', '192.168.1.32', '成都', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 3 DAY)),
+(1, 'user_23', '192.168.1.33', '武汉', 'desktop', 'Chrome/119.0', DATE_SUB(NOW(), INTERVAL 3 DAY + INTERVAL 3 HOUR)),
+(2, 'user_24', '192.168.1.34', '西安', 'mobile', 'Android 12', DATE_SUB(NOW(), INTERVAL 3 DAY + INTERVAL 5 HOUR)),
+(6, 'user_25', '192.168.1.35', '南京', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 3 DAY + INTERVAL 7 HOUR)),
+(7, 'user_26', '192.168.1.36', '重庆', 'tablet', 'iPadOS 17.0', DATE_SUB(NOW(), INTERVAL 4 DAY)),
+(1, 'user_27', '192.168.1.37', '天津', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 4 DAY + INTERVAL 2 HOUR)),
+(3, 'user_28', '192.168.1.38', '苏州', 'mobile', 'iOS 16.0', DATE_SUB(NOW(), INTERVAL 4 DAY + INTERVAL 4 HOUR)),
+(8, 'user_29', '192.168.1.39', '长沙', 'desktop', 'Edge/120.0', DATE_SUB(NOW(), INTERVAL 4 DAY + INTERVAL 6 HOUR)),
+(1, 'user_30', '192.168.1.40', '郑州', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 5 DAY)),
+(2, 'user_31', '192.168.1.41', '青岛', 'mobile', 'Android 13', DATE_SUB(NOW(), INTERVAL 5 DAY + INTERVAL 2 HOUR)),
+(4, 'user_32', '192.168.1.42', '大连', 'desktop', 'Chrome/119.0', DATE_SUB(NOW(), INTERVAL 5 DAY + INTERVAL 4 HOUR)),
+(5, 'user_33', '192.168.1.43', '厦门', 'desktop', 'Firefox/120.0', DATE_SUB(NOW(), INTERVAL 5 DAY + INTERVAL 6 HOUR)),
+(1, 'user_34', '192.168.1.44', '北京', 'mobile', 'iOS 17.0', DATE_SUB(NOW(), INTERVAL 6 DAY)),
+(6, 'user_35', '192.168.1.45', '上海', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 6 DAY + INTERVAL 3 HOUR)),
+(7, 'user_36', '192.168.1.46', '广州', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 6 DAY + INTERVAL 5 HOUR)),
+
+-- 近30天数据（更多历史数据）
+(1, 'user_37', '192.168.1.47', '深圳', 'mobile', 'Android 13', DATE_SUB(NOW(), INTERVAL 7 DAY)),
+(2, 'user_38', '192.168.1.48', '杭州', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 8 DAY)),
+(3, 'user_39', '192.168.1.49', '成都', 'desktop', 'Edge/120.0', DATE_SUB(NOW(), INTERVAL 9 DAY)),
+(1, 'user_40', '192.168.1.50', '武汉', 'mobile', 'iOS 16.0', DATE_SUB(NOW(), INTERVAL 10 DAY)),
+(4, 'user_41', '192.168.1.51', '西安', 'desktop', 'Chrome/119.0', DATE_SUB(NOW(), INTERVAL 11 DAY)),
+(5, 'user_42', '192.168.1.52', '南京', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 12 DAY)),
+(8, 'user_43', '192.168.1.53', '重庆', 'mobile', 'Android 12', DATE_SUB(NOW(), INTERVAL 13 DAY)),
+(1, 'user_44', '192.168.1.54', '天津', 'desktop', 'Firefox/120.0', DATE_SUB(NOW(), INTERVAL 14 DAY)),
+(6, 'user_45', '192.168.1.55', '苏州', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 15 DAY)),
+(2, 'user_46', '192.168.1.56', '长沙', 'mobile', 'iOS 17.0', DATE_SUB(NOW(), INTERVAL 16 DAY)),
+(1, 'user_47', '192.168.1.57', '郑州', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 17 DAY)),
+(3, 'user_48', '192.168.1.58', '青岛', 'desktop', 'Edge/120.0', DATE_SUB(NOW(), INTERVAL 18 DAY)),
+(7, 'user_49', '192.168.1.59', '大连', 'mobile', 'Android 13', DATE_SUB(NOW(), INTERVAL 19 DAY)),
+(1, 'user_50', '192.168.1.60', '厦门', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 20 DAY)),
+(4, 'user_51', '192.168.1.61', '北京', 'tablet', 'iPadOS 17.0', DATE_SUB(NOW(), INTERVAL 21 DAY)),
+(5, 'user_52', '192.168.1.62', '上海', 'desktop', 'Chrome/119.0', DATE_SUB(NOW(), INTERVAL 22 DAY)),
+(8, 'user_53', '192.168.1.63', '广州', 'mobile', 'iOS 16.0', DATE_SUB(NOW(), INTERVAL 23 DAY)),
+(1, 'user_54', '192.168.1.64', '深圳', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 24 DAY)),
+(2, 'user_55', '192.168.1.65', '杭州', 'desktop', 'Firefox/120.0', DATE_SUB(NOW(), INTERVAL 25 DAY)),
+(6, 'user_56', '192.168.1.66', '成都', 'mobile', 'Android 12', DATE_SUB(NOW(), INTERVAL 26 DAY)),
+(3, 'user_57', '192.168.1.67', '武汉', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 27 DAY)),
+(1, 'user_58', '192.168.1.68', '西安', 'desktop', 'Edge/120.0', DATE_SUB(NOW(), INTERVAL 28 DAY)),
+(7, 'user_59', '192.168.1.69', '南京', 'mobile', 'iOS 17.0', DATE_SUB(NOW(), INTERVAL 29 DAY)),
+(4, 'user_60', '192.168.1.70', '重庆', 'desktop', 'Chrome/120.0', DATE_SUB(NOW(), INTERVAL 30 DAY));

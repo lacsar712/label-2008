@@ -152,7 +152,7 @@ require_once 'common.php';
                                 'low' => '低'
                             ][$row['priority']];
                             ?>
-                            <div class="notice-card">
+                            <a href="notice_detail.php?id=<?php echo $row['id']; ?>" class="notice-card notice-card-link">
                                 <div class="notice-header">
                                     <span class="priority-badge <?php echo $priority_class; ?>">
                                         <?php echo $priority_text; ?>
@@ -184,7 +184,7 @@ require_once 'common.php';
                                         <?php echo $row['views']; ?>
                                     </span>
                                 </div>
-                            </div>
+                            </a>
                             <?php
                         }
                     } else {

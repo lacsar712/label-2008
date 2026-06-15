@@ -225,7 +225,7 @@ function updateTopNotices(data) {
 }
 
 function viewNoticeDetail(id) {
-    window.open(`add_notice.php?id=${id}`, '_blank');
+    window.open(`notice_detail.php?id=${id}`, '_blank');
 }
 
 function updateTrendChart(data) {

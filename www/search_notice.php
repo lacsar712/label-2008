@@ -346,7 +346,9 @@ require_once 'common.php';
                                 <?php endif; ?>
                             </td>
                             <td class="notice-title-cell">
-                                <?php echo htmlspecialchars($notice['title']); ?>
+                                <a href="notice_detail.php?id=<?php echo $notice['id']; ?>" class="notice-title-link">
+                                    <?php echo htmlspecialchars($notice['title']); ?>
+                                </a>
                             </td>
                             <td class="notice-content-cell">
                                 <?php 
