@@ -1,9 +1,134 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params(0, '/', '', isset($_SERVER['HTTPS']), true);
     session_start();
 }
 
 require_once 'config.php';
+
+function check_remember_me() {
+    if (is_logged_in()) {
+        return true;
+    }
+    
+    if (empty($_COOKIE['remember_token'])) {
+        return false;
+    }
+    
+    $token = $_COOKIE['remember_token'];
+    $conn = getConnection();
+    
+    $stmt = $conn->prepare("SELECT user_id, expires_at FROM remember_tokens WHERE token = ?");
+    $stmt->bind_param("s", $token);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $stmt->close();
+    
+    if (!$row) {
+        closeConnection($conn);
+        setcookie('remember_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
+        return false;
+    }
+    
+    $now = new DateTime();
+    $expires = new DateTime($row['expires_at']);
+    
+    if ($now > $expires) {
+        $stmt = $conn->prepare("DELETE FROM remember_tokens WHERE token = ?");
+        $stmt->bind_param("s", $token);
+        $stmt->execute();
+        $stmt->close();
+        closeConnection($conn);
+        setcookie('remember_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
+        return false;
+    }
+    
+    $user_stmt = $conn->prepare("SELECT id, status FROM users WHERE id = ?");
+    $user_stmt->bind_param("i", $row['user_id']);
+    $user_stmt->execute();
+    $user_result = $user_stmt->get_result();
+    $user = $user_result->fetch_assoc();
+    $user_stmt->close();
+    
+    if (!$user || $user['status'] !== 'active') {
+        $stmt = $conn->prepare("DELETE FROM remember_tokens WHERE token = ?");
+        $stmt->bind_param("s", $token);
+        $stmt->execute();
+        $stmt->close();
+        closeConnection($conn);
+        setcookie('remember_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
+        return false;
+    }
+    
+    $_SESSION['user_id'] = $user['id'];
+    session_regenerate_id(true);
+    
+    $ip = get_client_ip();
+    $now_str = date('Y-m-d H:i:s');
+    $update_stmt = $conn->prepare("UPDATE users SET last_login_time = ?, last_login_ip = ? WHERE id = ?");
+    $update_stmt->bind_param("ssi", $now_str, $ip, $user['id']);
+    $update_stmt->execute();
+    $update_stmt->close();
+    
+    closeConnection($conn);
+    return true;
+}
+
+check_remember_me();
+
+function set_remember_me($user_id, $days = 7) {
+    $token = bin2hex(random_bytes(32));
+    $expires = date('Y-m-d H:i:s', time() + $days * 86400);
+    
+    $conn = getConnection();
+    
+    $stmt = $conn->prepare("INSERT INTO remember_tokens (user_id, token, expires_at) VALUES (?, ?, ?)");
+    $stmt->bind_param("iss", $user_id, $token, $expires);
+    $result = $stmt->execute();
+    $stmt->close();
+    
+    closeConnection($conn);
+    
+    if ($result) {
+        setcookie(
+            'remember_token',
+            $token,
+            time() + $days * 86400,
+            '/',
+            '',
+            isset($_SERVER['HTTPS']),
+            true
+        );
+    }
+    
+    return $result;
+}
+
+function clear_remember_me() {
+    if (!empty($_COOKIE['remember_token'])) {
+        $token = $_COOKIE['remember_token'];
+        $conn = getConnection();
+        
+        $stmt = $conn->prepare("DELETE FROM remember_tokens WHERE token = ?");
+        $stmt->bind_param("s", $token);
+        $stmt->execute();
+        $stmt->close();
+        
+        closeConnection($conn);
+    }
+    
+    if (!empty($_SESSION['user_id'])) {
+        $conn = getConnection();
+        $stmt = $conn->prepare("DELETE FROM remember_tokens WHERE user_id = ?");
+        $stmt->bind_param("i", $_SESSION['user_id']);
+        $stmt->execute();
+        $stmt->close();
+        closeConnection($conn);
+    }
+    
+    setcookie('remember_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
+}
 
 function get_client_ip() {
     if (!empty($_SERVER['HTTP_CLIENT_IP'])) {

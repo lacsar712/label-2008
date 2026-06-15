@@ -63,6 +63,7 @@ if ($stmt->execute()) {
     $stmt->close();
     closeConnection($conn);
     
+    clear_remember_me();
     session_unset();
     session_destroy();
     

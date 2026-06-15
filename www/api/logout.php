@@ -8,9 +8,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 if (!is_logged_in()) {
+    clear_remember_me();
     json_response(200, '已退出登录');
 }
 
+clear_remember_me();
 session_unset();
 session_destroy();
 

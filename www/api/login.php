@@ -19,6 +19,7 @@ if (!$input) {
 
 $username = trim($input['username'] ?? '');
 $password = $input['password'] ?? '';
+$remember = !empty($input['remember']);
 
 if (empty($username) || empty($password)) {
     json_response(1010, get_error_message(1010));
@@ -53,6 +54,10 @@ $stmt->close();
 
 $_SESSION['user_id'] = $user['id'];
 session_regenerate_id(true);
+
+if ($remember) {
+    set_remember_me($user['id'], 7);
+}
 
 closeConnection($conn);
 

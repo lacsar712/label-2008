@@ -62,6 +62,12 @@ $stmt->bind_param("si", $hashed_password, $user['id']);
 
 if ($stmt->execute()) {
     $stmt->close();
+    
+    $del_stmt = $conn->prepare("DELETE FROM remember_tokens WHERE user_id = ?");
+    $del_stmt->bind_param("i", $user['id']);
+    $del_stmt->execute();
+    $del_stmt->close();
+    
     closeConnection($conn);
     json_response(200, '密码重置成功');
 } else {
