@@ -1,4 +1,3 @@
-let currentUserPermissions = [];
 let usersData = [];
 let rolesData = [];
 let currentPage = 1;
@@ -8,24 +7,13 @@ let editingUserId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     loadCurrentUserPermissions().then(() => {
-        loadRoles();
+        loadAllRoles();
         loadUsers();
     });
     initSearchForm();
 });
 
-async function loadCurrentUserPermissions() {
-    const result = await apiRequest('me/permissions', 'GET');
-    if (result.code === 200 && result.data) {
-        currentUserPermissions = result.data.permission_names || [];
-    }
-}
-
-function hasPermission(permission) {
-    return currentUserPermissions.includes(permission);
-}
-
-async function loadRoles() {
+async function loadAllRoles() {
     const result = await apiRequest('roles/list', 'GET');
     if (result.code === 200 && result.data) {
         rolesData = result.data;

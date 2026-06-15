@@ -1,21 +1,13 @@
-let currentUserPermissions = [];
 let rolesData = [];
 let permissionsData = [];
 
 document.addEventListener('DOMContentLoaded', function() {
     loadCurrentUserPermissions().then(() => {
         initPageActions();
-        loadRoles();
+        loadRolesList();
     });
     initRoleForm();
 });
-
-async function loadCurrentUserPermissions() {
-    const result = await apiRequest('me/permissions', 'GET');
-    if (result.code === 200 && result.data) {
-        currentUserPermissions = result.data.permission_names || [];
-    }
-}
 
 function initPageActions() {
     const addBtn = document.getElementById('addRoleBtn');
@@ -26,11 +18,7 @@ function initPageActions() {
     }
 }
 
-function hasPermission(permission) {
-    return currentUserPermissions.includes(permission);
-}
-
-async function loadRoles() {
+async function loadRolesList() {
     const tbody = document.getElementById('rolesTableBody');
     tbody.innerHTML = '<tr><td colspan="8" class="loading">加载中...</td></tr>';
     
@@ -173,7 +161,7 @@ function initRoleForm() {
         if (result.code === 200) {
             showToast(result.message, 'success');
             closeRoleModal();
-            loadRoles();
+            loadRolesList();
         } else {
             showToast(result.message, 'error');
         }
@@ -187,7 +175,7 @@ async function deleteRole(roleId) {
     
     if (result.code === 200) {
         showToast(result.message, 'success');
-        loadRoles();
+        loadRolesList();
     } else {
         showToast(result.message, 'error');
     }
@@ -302,7 +290,7 @@ async function savePermissions() {
     if (result.code === 200) {
         showToast(result.message, 'success');
         closePermissionModal();
-        loadRoles();
+        loadRolesList();
     } else {
         showToast(result.message, 'error');
     }
