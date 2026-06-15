@@ -23,6 +23,24 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </ul>
         <div class="nav-user">
             <?php if ($current_user): ?>
+                <div class="message-notification">
+                    <button class="message-bell-btn" onclick="toggleMessagePanel()">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span class="message-badge" id="messageBadge" style="display: none;">0</span>
+                    </button>
+                    <div class="message-dropdown" id="messageDropdown">
+                        <div class="message-dropdown-header">
+                            <h4>未读消息</h4>
+                            <a href="messages.php" class="message-view-all">查看全部</a>
+                        </div>
+                        <div class="message-dropdown-list" id="messageDropdownList">
+                            <div class="message-loading">加载中...</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="user-dropdown">
                     <button class="user-avatar-btn" onclick="toggleUserMenu()">
                         <?php if ($current_user['avatar_url']): ?>
@@ -41,6 +59,13 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         </svg>
                     </button>
                     <div class="user-menu" id="userMenu">
+                        <a href="messages.php" class="menu-item">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            消息中心
+                        </a>
                         <a href="profile.php" class="menu-item">
                             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

@@ -265,6 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     loadCategoryCards();
     loadTagCloud();
+    initMessageNotification();
 });
 
 async function loadTagCloud() {
@@ -328,3 +329,112 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+let messagePollingInterval = null;
+
+async function initMessageNotification() {
+    const badge = document.getElementById('messageBadge');
+    if (!badge) return;
+
+    await updateUnreadCount();
+
+    messagePollingInterval = setInterval(updateUnreadCount, 30000);
+}
+
+async function updateUnreadCount() {
+    const badge = document.getElementById('messageBadge');
+    if (!badge) return;
+
+    try {
+        const result = await apiRequest('messages/unread_count', 'GET');
+        if (result.code === 200 && result.data) {
+            const count = result.data.count;
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = count > 0 ? 'inline-flex' : 'none';
+        }
+    } catch (e) {
+        console.error('Failed to fetch unread count:', e);
+    }
+}
+
+function toggleMessagePanel() {
+    const dropdown = document.getElementById('messageDropdown');
+    if (!dropdown) return;
+
+    const isOpen = dropdown.classList.contains('show');
+    if (isOpen) {
+        dropdown.classList.remove('show');
+    } else {
+        dropdown.classList.add('show');
+        loadRecentMessages();
+    }
+}
+
+async function loadRecentMessages() {
+    const listEl = document.getElementById('messageDropdownList');
+    if (!listEl) return;
+
+    listEl.innerHTML = '<div class="message-loading">加载中...</div>';
+
+    const result = await apiRequest('messages/recent', 'GET');
+    if (result.code === 200 && result.data) {
+        if (result.data.length === 0) {
+            listEl.innerHTML = '<div class="message-empty">暂无未读消息</div>';
+            return;
+        }
+
+        listEl.innerHTML = result.data.map(msg => `
+            <div class="message-item" onclick="markMessageRead(${msg.id})">
+                <div class="message-item-header">
+                    <span class="message-type-badge message-type-${escapeHtml(msg.type)}">${getTypeLabel(msg.type)}</span>
+                    <span class="message-item-time">${formatMessageTime(msg.created_at)}</span>
+                </div>
+                <div class="message-item-title">${escapeHtml(msg.title)}</div>
+                ${msg.body ? `<div class="message-item-body">${escapeHtml(msg.body).substring(0, 60)}${msg.body.length > 60 ? '...' : ''}</div>` : ''}
+            </div>
+        `).join('');
+    } else {
+        listEl.innerHTML = '<div class="message-empty">加载失败</div>';
+    }
+}
+
+async function markMessageRead(id) {
+    const result = await apiRequest('messages/mark_read', 'POST', { id: id });
+    if (result.code === 200) {
+        updateUnreadCount();
+        loadRecentMessages();
+    }
+}
+
+function getTypeLabel(type) {
+    const labels = {
+        system: '系统',
+        notice: '公告',
+        security: '安全',
+        activity: '活动'
+    };
+    return labels[type] || type;
+}
+
+function formatMessageTime(timeStr) {
+    const now = new Date();
+    const time = new Date(timeStr.replace(/-/g, '/'));
+    const diff = now - time;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return '刚刚';
+    if (minutes < 60) return `${minutes}分钟前`;
+    if (hours < 24) return `${hours}小时前`;
+    if (days < 7) return `${days}天前`;
+    return timeStr.substring(0, 16);
+}
+
+document.addEventListener('click', function(e) {
+    const notification = document.querySelector('.message-notification');
+    const dropdown = document.getElementById('messageDropdown');
+    if (notification && dropdown && !notification.contains(e.target)) {
+        dropdown.classList.remove('show');
+    }
+});

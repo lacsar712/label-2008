@@ -194,6 +194,12 @@
             $conn->commit();
             $success_message = isset($_POST['id']) && !empty($_POST['id']) ? "公告更新成功！" : "公告添加成功！";
             
+            if (isset($_POST['id']) && !empty($_POST['id'])) {
+                send_message_to_all('notice', '公告已更新', '公告「' . $title . '」已被更新', 'notice', $notice_id);
+            } else {
+                send_message_to_all('notice', '新公告发布', '新公告「' . $title . '」已发布', 'notice', $notice_id);
+            }
+            
         } catch (Exception $e) {
             $conn->rollback();
             $error_message = $e->getMessage();

@@ -223,3 +223,40 @@ SELECT 3, id FROM permissions WHERE name = 'tag:view';
 -- 为访客分配仅查看权限
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 3, id FROM permissions WHERE name IN ('notice:view', 'category:view');
+
+-- 创建站内消息表
+CREATE TABLE IF NOT EXISTS messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    receiver_id INT NOT NULL COMMENT '接收人用户ID',
+    type VARCHAR(50) NOT NULL DEFAULT 'system' COMMENT '消息类型: system, notice, security, activity',
+    title VARCHAR(255) NOT NULL COMMENT '消息标题',
+    body TEXT DEFAULT NULL COMMENT '消息正文',
+    entity_type VARCHAR(50) DEFAULT NULL COMMENT '关联实体类型: notice, category, tag等',
+    entity_id INT DEFAULT NULL COMMENT '关联实体ID',
+    is_read TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否已读: 0未读, 1已读',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_receiver_id (receiver_id),
+    INDEX idx_type (type),
+    INDEX idx_is_read (is_read),
+    INDEX idx_created_at (created_at),
+    INDEX idx_receiver_read (receiver_id, is_read),
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 插入消息相关权限
+INSERT INTO permissions (name, display_name, description, category) VALUES
+('message:view', '查看消息', '查看站内消息', 'message'),
+('message:send', '发送消息', '发送站内消息', 'message'),
+('message:manage', '管理消息', '管理所有用户消息', 'message');
+
+-- 为超级管理员分配消息权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 1, id FROM permissions WHERE category = 'message';
+
+-- 为编辑分配查看消息权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 2, id FROM permissions WHERE name = 'message:view';
+
+-- 为访客分配查看消息权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, id FROM permissions WHERE name = 'message:view';

@@ -280,4 +280,31 @@ function get_permissions_grouped() {
     }
     return $grouped;
 }
+
+function send_message($receiver_id, $type, $title, $body = '', $entity_type = null, $entity_id = null) {
+    $conn = getConnection();
+    $stmt = $conn->prepare("INSERT INTO messages (receiver_id, type, title, body, entity_type, entity_id) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("issssi", $receiver_id, $type, $title, $body, $entity_type, $entity_id);
+    $result = $stmt->execute();
+    $insert_id = $result ? $conn->insert_id : 0;
+    $stmt->close();
+    closeConnection($conn);
+    return $insert_id;
+}
+
+function send_message_to_all($type, $title, $body = '', $entity_type = null, $entity_id = null) {
+    $conn = getConnection();
+    $users_result = $conn->query("SELECT id FROM users WHERE status = 'active'");
+    $count = 0;
+    $stmt = $conn->prepare("INSERT INTO messages (receiver_id, type, title, body, entity_type, entity_id) VALUES (?, ?, ?, ?, ?, ?)");
+    while ($user = $users_result->fetch_assoc()) {
+        $stmt->bind_param("issssi", $user['id'], $type, $title, $body, $entity_type, $entity_id);
+        if ($stmt->execute()) {
+            $count++;
+        }
+    }
+    $stmt->close();
+    closeConnection($conn);
+    return $count;
+}
 ?>

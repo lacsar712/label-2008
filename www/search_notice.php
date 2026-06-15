@@ -17,11 +17,21 @@
         require_permission('notice:delete');
         $id = intval($_GET['delete']);
         $conn = getConnection();
+        $notice_stmt = $conn->prepare("SELECT title FROM notices WHERE id = ?");
+        $notice_stmt->bind_param("i", $id);
+        $notice_stmt->execute();
+        $notice_result = $notice_stmt->get_result();
+        $notice_row = $notice_result->fetch_assoc();
+        $notice_stmt->close();
+
         $stmt = $conn->prepare("DELETE FROM notices WHERE id = ?");
         $stmt->bind_param("i", $id);
         
         if ($stmt->execute()) {
             $success_message = "公告删除成功！";
+            if ($notice_row) {
+                send_message_to_all('notice', '公告已删除', '公告「' . $notice_row['title'] . '」已被删除', 'notice', $id);
+            }
         } else {
             $error_message = "删除失败: " . $conn->error;
         }
