@@ -79,6 +79,18 @@ try {
         $update_stmt->close();
     }
 
+    // 获取旧标签详细信息
+    $old_tags_stmt_detail = $conn->prepare("SELECT t.id, t.name FROM tags t WHERE t.id IN (" . implode(',', array_fill(0, count($old_tag_ids), '?')) . ")");
+    $old_tag_types = str_repeat('i', count($old_tag_ids));
+    $old_tags_stmt_detail->bind_param($old_tag_types, ...$old_tag_ids);
+    $old_tags_stmt_detail->execute();
+    $old_tags_result = $old_tags_stmt_detail->get_result();
+    $old_tags_detail = [];
+    while ($row = $old_tags_result->fetch_assoc()) {
+        $old_tags_detail[] = $row;
+    }
+    $old_tags_stmt_detail->close();
+
     $conn->commit();
 
     $get_tags_stmt = $conn->prepare("
@@ -97,6 +109,12 @@ try {
     $get_tags_stmt->close();
 
     closeConnection($conn);
+
+    write_operation_log('set_tags', 'notice', $notice_id, [
+        'tags' => $old_tags_detail
+    ], [
+        'tags' => $new_tags
+    ]);
 
     json_response(200, '设置成功', [
         'notice_id' => $notice_id,

@@ -45,6 +45,7 @@ if ($stmt->execute()) {
     $tag = $result->fetch_assoc();
     $get_stmt->close();
     closeConnection($conn);
+    write_operation_log('create', 'tag', $id, null, $tag);
     json_response(200, '创建成功', $tag);
 } else {
     $error = $conn->error;

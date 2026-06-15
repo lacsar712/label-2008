@@ -89,10 +89,20 @@
         
         try {
             $notice_id = null;
+            $is_update = isset($_POST['id']) && !empty($_POST['id']);
+            $before_data = null;
+            $after_data = null;
             
-            if (isset($_POST['id']) && !empty($_POST['id'])) {
-                // 更新公告
+            if ($is_update) {
+                // 更新公告 - 先获取变更前数据
                 $notice_id = intval($_POST['id']);
+                $before_stmt = $conn->prepare("SELECT * FROM notices WHERE id = ?");
+                $before_stmt->bind_param("i", $notice_id);
+                $before_stmt->execute();
+                $before_result = $before_stmt->get_result();
+                $before_data = $before_result->fetch_assoc();
+                $before_stmt->close();
+                
                 $stmt = $conn->prepare("UPDATE notices SET title=?, content=?, author=?, author_id=?, priority=?, status=?, category_id=? WHERE id=?");
                 $stmt->bind_param("sssissii", $title, $content, $author, $author_id, $priority, $status, $category_id, $notice_id);
                 
@@ -155,14 +165,16 @@
                 return $id > 0;
             });
             
-            // 获取旧标签ID用于更新引用计数（必须在删除前查询）
-            $old_tags_stmt = $conn->prepare("SELECT tag_id FROM notice_tags WHERE notice_id = ?");
+            // 获取旧标签信息用于更新引用计数和日志（必须在删除前查询）
+            $old_tags_stmt = $conn->prepare("SELECT t.id, t.name FROM tags t INNER JOIN notice_tags nt ON t.id = nt.tag_id WHERE nt.notice_id = ?");
             $old_tags_stmt->bind_param("i", $notice_id);
             $old_tags_stmt->execute();
             $old_tags_result = $old_tags_stmt->get_result();
             $old_tag_ids = [];
+            $old_tag_info = [];
             while ($row = $old_tags_result->fetch_assoc()) {
-                $old_tag_ids[] = $row['tag_id'];
+                $old_tag_ids[] = $row['id'];
+                $old_tag_info[] = $row;
             }
             $old_tags_stmt->close();
             
@@ -191,13 +203,39 @@
                 $update_count_stmt->close();
             }
             
-            $conn->commit();
-            $success_message = isset($_POST['id']) && !empty($_POST['id']) ? "公告更新成功！" : "公告添加成功！";
+            // 获取变更后的数据
+            $after_stmt = $conn->prepare("SELECT * FROM notices WHERE id = ?");
+            $after_stmt->bind_param("i", $notice_id);
+            $after_stmt->execute();
+            $after_result = $after_stmt->get_result();
+            $after_data = $after_result->fetch_assoc();
+            $after_stmt->close();
             
-            if (isset($_POST['id']) && !empty($_POST['id'])) {
+            // 获取标签信息
+            $tags_stmt = $conn->prepare("SELECT t.id, t.name FROM tags t INNER JOIN notice_tags nt ON t.id = nt.tag_id WHERE nt.notice_id = ?");
+            $tags_stmt->bind_param("i", $notice_id);
+            $tags_stmt->execute();
+            $tags_result = $tags_stmt->get_result();
+            $notice_tags = [];
+            while ($tag = $tags_result->fetch_assoc()) {
+                $notice_tags[] = $tag;
+            }
+            $tags_stmt->close();
+            
+            $after_data['tags'] = $notice_tags;
+            if ($before_data) {
+                $before_data['tags'] = $old_tag_info;
+            }
+            
+            $conn->commit();
+            $success_message = $is_update ? "公告更新成功！" : "公告添加成功！";
+            
+            if ($is_update) {
                 send_message_to_all('notice', '公告已更新', '公告「' . $title . '」已被更新', 'notice', $notice_id);
+                write_operation_log('update', 'notice', $notice_id, $before_data, $after_data);
             } else {
                 send_message_to_all('notice', '新公告发布', '新公告「' . $title . '」已发布', 'notice', $notice_id);
+                write_operation_log('create', 'notice', $notice_id, null, $after_data);
             }
             
         } catch (Exception $e) {

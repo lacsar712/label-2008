@@ -20,18 +20,18 @@ if ($role_id <= 0) {
 try {
     $conn = getConnection();
     
-    $stmt = $conn->prepare("SELECT id, name FROM roles WHERE id = ?");
-    $stmt->bind_param("i", $role_id);
-    $stmt->execute();
-    $role = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    $before_stmt = $conn->prepare("SELECT * FROM roles WHERE id = ?");
+    $before_stmt->bind_param("i", $role_id);
+    $before_stmt->execute();
+    $before_data = $before_stmt->get_result()->fetch_assoc();
+    $before_stmt->close();
     
-    if (!$role) {
+    if (!$before_data) {
         closeConnection($conn);
         json_response(404, '角色不存在');
     }
     
-    if (in_array($role['name'], ['super_admin', 'editor', 'guest'])) {
+    if (in_array($before_data['name'], ['super_admin', 'editor', 'guest'])) {
         closeConnection($conn);
         json_response(400, '系统预置角色不可删除');
     }
@@ -53,6 +53,7 @@ try {
     if ($stmt->execute()) {
         $stmt->close();
         closeConnection($conn);
+        write_operation_log('delete', 'role', $role_id, $before_data, null);
         json_response(200, '删除成功');
     } else {
         $stmt->close();

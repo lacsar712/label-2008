@@ -124,6 +124,20 @@ closeConnection($conn);
 
 unlink($tmp_path);
 
+$imported_titles = [];
+foreach ($results as $result) {
+    if ($result['success']) {
+        $imported_titles[] = $result['title'];
+    }
+}
+
+write_operation_log('import', 'notice', 'batch', null, [
+    'total' => count($rows),
+    'success_count' => $success_count,
+    'fail_count' => $fail_count,
+    'imported_titles' => $imported_titles
+]);
+
 json_response(200, '导入完成', [
     'total' => count($rows),
     'success_count' => $success_count,

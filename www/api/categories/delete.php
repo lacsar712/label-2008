@@ -20,16 +20,17 @@ if ($id <= 0) {
 
 $conn = getConnection();
 
-$check_stmt = $conn->prepare("SELECT id FROM categories WHERE id = ?");
-$check_stmt->bind_param("i", $id);
-$check_stmt->execute();
-$check_result = $check_stmt->get_result();
-if (!$check_result->fetch_assoc()) {
-    $check_stmt->close();
+$before_stmt = $conn->prepare("SELECT * FROM categories WHERE id = ?");
+$before_stmt->bind_param("i", $id);
+$before_stmt->execute();
+$before_result = $before_stmt->get_result();
+$before_data = $before_result->fetch_assoc();
+$before_stmt->close();
+
+if (!$before_data) {
     closeConnection($conn);
     json_response(404, '分类不存在');
 }
-$check_stmt->close();
 
 $stmt = $conn->prepare("DELETE FROM categories WHERE id = ?");
 $stmt->bind_param("i", $id);
@@ -37,6 +38,7 @@ $stmt->bind_param("i", $id);
 if ($stmt->execute()) {
     $stmt->close();
     closeConnection($conn);
+    write_operation_log('delete', 'category', $id, $before_data, null);
     json_response(200, '删除成功');
 } else {
     $error = $conn->error;

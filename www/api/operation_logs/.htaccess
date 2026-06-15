@@ -1,0 +1,7 @@
+# Deny access to .htaccess
+<Files .htaccess>
+    Require all denied
+</Files>
+
+# Disable directory listing
+Options -Indexes

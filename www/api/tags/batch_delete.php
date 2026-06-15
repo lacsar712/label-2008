@@ -76,6 +76,14 @@ try {
     $conn->commit();
     closeConnection($conn);
 
+    write_operation_log('batch_delete', 'tag', $existing_ids, [
+        'tags' => $existing_tags,
+        'reference_counts' => $ref_counts
+    ], [
+        'deleted_count' => $deleted_count,
+        'deleted_references' => $deleted_nt_count
+    ]);
+
     json_response(200, '批量删除成功', [
         'deleted_count' => $deleted_count,
         'deleted_references' => $deleted_nt_count,

@@ -273,3 +273,32 @@ SELECT 1, id FROM permissions WHERE name IN ('notice:export', 'notice:import');
 -- 为编辑分配导入导出权限
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 2, id FROM permissions WHERE name IN ('notice:export', 'notice:import');
+
+-- 创建操作日志表
+CREATE TABLE IF NOT EXISTS operation_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT DEFAULT NULL COMMENT '操作人ID',
+    user_nickname VARCHAR(100) DEFAULT NULL COMMENT '操作人昵称',
+    operation_type VARCHAR(50) NOT NULL COMMENT '操作类型: create, update, delete, batch_update, batch_delete, assign_permission, assign_role',
+    target_type VARCHAR(50) NOT NULL COMMENT '目标类型: notice, category, tag, role, user_permission, user_role',
+    target_id VARCHAR(100) DEFAULT NULL COMMENT '目标ID，批量操作时用逗号分隔',
+    before_data JSON DEFAULT NULL COMMENT '变更前数据快照',
+    after_data JSON DEFAULT NULL COMMENT '变更后数据快照',
+    ip VARCHAR(45) DEFAULT NULL COMMENT '操作IP地址',
+    user_agent VARCHAR(500) DEFAULT NULL COMMENT '浏览器User-Agent',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+    INDEX idx_user_id (user_id),
+    INDEX idx_operation_type (operation_type),
+    INDEX idx_target_type (target_type),
+    INDEX idx_target_id (target_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 插入操作日志相关权限
+INSERT INTO permissions (name, display_name, description, category) VALUES
+('log:view', '查看操作日志', '查看系统操作日志', 'log'),
+('log:export', '导出操作日志', '导出操作日志为CSV', 'log');
+
+-- 为超级管理员分配操作日志权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 1, id FROM permissions WHERE category = 'log';

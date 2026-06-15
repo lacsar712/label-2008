@@ -307,4 +307,138 @@ function send_message_to_all($type, $title, $body = '', $entity_type = null, $en
     closeConnection($conn);
     return $count;
 }
+
+function get_operation_type_label($type) {
+    $labels = [
+        'create' => '创建',
+        'update' => '更新',
+        'delete' => '删除',
+        'batch_update' => '批量更新',
+        'batch_delete' => '批量删除',
+        'assign_permission' => '分配权限',
+        'assign_role' => '分配角色',
+        'import' => '导入',
+        'set_tags' => '设置标签',
+        'merge_tags' => '合并标签'
+    ];
+    return $labels[$type] ?? $type;
+}
+
+function get_target_type_label($type) {
+    $labels = [
+        'notice' => '公告',
+        'category' => '分类',
+        'tag' => '标签',
+        'role' => '角色',
+        'user' => '用户',
+        'user_permission' => '用户权限',
+        'user_role' => '用户角色',
+        'role_permission' => '角色权限'
+    ];
+    return $labels[$type] ?? $type;
+}
+
+function write_operation_log($operation_type, $target_type, $target_id, $before_data = null, $after_data = null) {
+    $user = get_current_user();
+    $user_id = $user ? $user['id'] : null;
+    $user_nickname = $user ? ($user['nickname'] ?: $user['username']) : null;
+    
+    $ip = get_client_ip();
+    $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500) : null;
+    
+    if (is_array($target_id)) {
+        $target_id = implode(',', array_map('strval', $target_id));
+    }
+    
+    $before_json = $before_data !== null ? json_encode($before_data, JSON_UNESCAPED_UNICODE) : null;
+    $after_json = $after_data !== null ? json_encode($after_data, JSON_UNESCAPED_UNICODE) : null;
+    
+    $conn = getConnection();
+    
+    try {
+        $stmt = $conn->prepare("INSERT INTO operation_logs (user_id, user_nickname, operation_type, target_type, target_id, before_data, after_data, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("issssssss", $user_id, $user_nickname, $operation_type, $target_type, $target_id, $before_json, $after_json, $ip, $user_agent);
+        $stmt->execute();
+        $stmt->close();
+    } catch (Exception $e) {
+        error_log("Failed to write operation log: " . $e->getMessage());
+    }
+    
+    closeConnection($conn);
+}
+
+function compute_data_diff($before, $after) {
+    $diff = [];
+    
+    if ($before === null && $after === null) {
+        return $diff;
+    }
+    
+    if ($before === null) {
+        $before = [];
+    }
+    if ($after === null) {
+        $after = [];
+    }
+    
+    if (!is_array($before)) {
+        $before = json_decode($before, true) ?: [];
+    }
+    if (!is_array($after)) {
+        $after = json_decode($after, true) ?: [];
+    }
+    
+    $all_keys = array_unique(array_merge(array_keys($before), array_keys($after)));
+    
+    foreach ($all_keys as $key) {
+        $old_val = isset($before[$key]) ? $before[$key] : null;
+        $new_val = isset($after[$key]) ? $after[$key] : null;
+        
+        if ($old_val !== $new_val) {
+            $diff[] = [
+                'field' => $key,
+                'old_value' => $old_val,
+                'new_value' => $new_val
+            ];
+        }
+    }
+    
+    return $diff;
+}
+
+function get_field_label($field) {
+    $labels = [
+        'id' => 'ID',
+        'title' => '标题',
+        'content' => '内容',
+        'author' => '作者',
+        'author_id' => '作者ID',
+        'category_id' => '分类ID',
+        'category_name' => '分类名称',
+        'priority' => '优先级',
+        'status' => '状态',
+        'name' => '名称',
+        'display_name' => '显示名称',
+        'description' => '描述',
+        'emoji' => '图标',
+        'color' => '颜色',
+        'sort_order' => '排序',
+        'created_at' => '创建时间',
+        'updated_at' => '更新时间',
+        'publish_date' => '发布时间',
+        'update_date' => '更新时间',
+        'views' => '浏览次数',
+        'reference_count' => '引用次数',
+        'username' => '用户名',
+        'email' => '邮箱',
+        'nickname' => '昵称',
+        'bio' => '个人简介',
+        'role_id' => '角色ID',
+        'permission_ids' => '权限ID列表',
+        'role_ids' => '角色ID列表',
+        'tag_ids' => '标签ID列表',
+        'user_id' => '用户ID'
+    ];
+    return $labels[$field] ?? $field;
+}
 ?>

@@ -47,7 +47,16 @@ try {
     if ($stmt->execute()) {
         $role_id = $conn->insert_id;
         $stmt->close();
+        
+        $get_stmt = $conn->prepare("SELECT * FROM roles WHERE id = ?");
+        $get_stmt->bind_param("i", $role_id);
+        $get_stmt->execute();
+        $result = $get_stmt->get_result();
+        $role = $result->fetch_assoc();
+        $get_stmt->close();
+        
         closeConnection($conn);
+        write_operation_log('create', 'role', $role_id, null, $role);
         json_response(200, '创建成功', ['id' => $role_id]);
     } else {
         $stmt->close();

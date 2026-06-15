@@ -26,16 +26,17 @@ if (empty($name)) {
 
 $conn = getConnection();
 
-$check_stmt = $conn->prepare("SELECT id FROM tags WHERE id = ?");
-$check_stmt->bind_param("i", $id);
-$check_stmt->execute();
-$check_result = $check_stmt->get_result();
-if (!$check_result->fetch_assoc()) {
-    $check_stmt->close();
+$before_stmt = $conn->prepare("SELECT * FROM tags WHERE id = ?");
+$before_stmt->bind_param("i", $id);
+$before_stmt->execute();
+$before_result = $before_stmt->get_result();
+$before_data = $before_result->fetch_assoc();
+$before_stmt->close();
+
+if (!$before_data) {
     closeConnection($conn);
     json_response(404, '标签不存在');
 }
-$check_stmt->close();
 
 $name_check_stmt = $conn->prepare("SELECT id FROM tags WHERE name = ? AND id != ?");
 $name_check_stmt->bind_param("si", $name, $id);
@@ -60,6 +61,7 @@ if ($stmt->execute()) {
     $tag = $result->fetch_assoc();
     $get_stmt->close();
     closeConnection($conn);
+    write_operation_log('update', 'tag', $id, $before_data, $tag);
     json_response(200, '更新成功', $tag);
 } else {
     $error = $conn->error;

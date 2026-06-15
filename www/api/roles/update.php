@@ -27,18 +27,18 @@ if (empty($display_name)) {
 try {
     $conn = getConnection();
     
-    $stmt = $conn->prepare("SELECT id, name FROM roles WHERE id = ?");
-    $stmt->bind_param("i", $role_id);
-    $stmt->execute();
-    $role = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    $before_stmt = $conn->prepare("SELECT * FROM roles WHERE id = ?");
+    $before_stmt->bind_param("i", $role_id);
+    $before_stmt->execute();
+    $before_data = $before_stmt->get_result()->fetch_assoc();
+    $before_stmt->close();
     
-    if (!$role) {
+    if (!$before_data) {
         closeConnection($conn);
         json_response(404, '角色不存在');
     }
     
-    if (in_array($role['name'], ['super_admin', 'editor', 'guest'])) {
+    if (in_array($before_data['name'], ['super_admin', 'editor', 'guest'])) {
         closeConnection($conn);
         json_response(400, '系统预置角色不可修改');
     }
@@ -48,7 +48,15 @@ try {
     
     if ($stmt->execute()) {
         $stmt->close();
+        
+        $after_stmt = $conn->prepare("SELECT * FROM roles WHERE id = ?");
+        $after_stmt->bind_param("i", $role_id);
+        $after_stmt->execute();
+        $after_data = $after_stmt->get_result()->fetch_assoc();
+        $after_stmt->close();
+        
         closeConnection($conn);
+        write_operation_log('update', 'role', $role_id, $before_data, $after_data);
         json_response(200, '更新成功');
     } else {
         $stmt->close();

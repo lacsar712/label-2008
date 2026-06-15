@@ -39,6 +39,17 @@ try {
     
     $conn->begin_transaction();
     
+    // 获取变更前的角色列表（必须在删除前获取）
+    $before_roles_stmt = $conn->prepare("SELECT role_id FROM user_roles WHERE user_id = ?");
+    $before_roles_stmt->bind_param("i", $user_id);
+    $before_roles_stmt->execute();
+    $before_roles_result = $before_roles_stmt->get_result();
+    $before_role_ids = [];
+    while ($row = $before_roles_result->fetch_assoc()) {
+        $before_role_ids[] = $row['role_id'];
+    }
+    $before_roles_stmt->close();
+    
     $stmt = $conn->prepare("DELETE FROM user_roles WHERE user_id = ?");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
@@ -78,7 +89,27 @@ try {
     }
     
     $conn->commit();
+    
+    // 获取变更后的角色列表
+    $after_roles_stmt = $conn->prepare("SELECT role_id FROM user_roles WHERE user_id = ?");
+    $after_roles_stmt->bind_param("i", $user_id);
+    $after_roles_stmt->execute();
+    $after_roles_result = $after_roles_stmt->get_result();
+    $after_role_ids = [];
+    while ($row = $after_roles_result->fetch_assoc()) {
+        $after_role_ids[] = $row['role_id'];
+    }
+    $after_roles_stmt->close();
+    
     closeConnection($conn);
+    
+    write_operation_log('assign_role', 'user_role', $user_id, [
+        'user_id' => $user_id,
+        'role_ids' => $before_role_ids
+    ], [
+        'user_id' => $user_id,
+        'role_ids' => $after_role_ids
+    ]);
     
     json_response(200, '角色分配成功');
 } catch (Exception $e) {

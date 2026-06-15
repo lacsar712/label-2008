@@ -30,16 +30,17 @@ if (empty($name)) {
 
 $conn = getConnection();
 
-$check_stmt = $conn->prepare("SELECT id FROM categories WHERE id = ?");
-$check_stmt->bind_param("i", $id);
-$check_stmt->execute();
-$check_result = $check_stmt->get_result();
-if (!$check_result->fetch_assoc()) {
-    $check_stmt->close();
+$before_stmt = $conn->prepare("SELECT * FROM categories WHERE id = ?");
+$before_stmt->bind_param("i", $id);
+$before_stmt->execute();
+$before_result = $before_stmt->get_result();
+$before_data = $before_result->fetch_assoc();
+$before_stmt->close();
+
+if (!$before_data) {
     closeConnection($conn);
     json_response(404, '分类不存在');
 }
-$check_stmt->close();
 
 $stmt = $conn->prepare("UPDATE categories SET name=?, emoji=?, color=?, description=?, sort_order=?, status=? WHERE id=?");
 $stmt->bind_param("ssssisi", $name, $emoji, $color, $description, $sort_order, $status, $id);
@@ -53,6 +54,7 @@ if ($stmt->execute()) {
     $category = $result->fetch_assoc();
     $get_stmt->close();
     closeConnection($conn);
+    write_operation_log('update', 'category', $id, $before_data, $category);
     json_response(200, '更新成功', $category);
 } else {
     $error = $conn->error;

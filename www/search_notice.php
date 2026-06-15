@@ -17,20 +17,37 @@
         require_permission('notice:delete');
         $id = intval($_GET['delete']);
         $conn = getConnection();
-        $notice_stmt = $conn->prepare("SELECT title FROM notices WHERE id = ?");
+        
+        // 获取完整的删除前数据用于日志
+        $notice_stmt = $conn->prepare("SELECT * FROM notices WHERE id = ?");
         $notice_stmt->bind_param("i", $id);
         $notice_stmt->execute();
         $notice_result = $notice_stmt->get_result();
-        $notice_row = $notice_result->fetch_assoc();
+        $before_data = $notice_result->fetch_assoc();
         $notice_stmt->close();
+        
+        // 获取标签信息
+        if ($before_data) {
+            $tags_stmt = $conn->prepare("SELECT t.id, t.name FROM tags t INNER JOIN notice_tags nt ON t.id = nt.tag_id WHERE nt.notice_id = ?");
+            $tags_stmt->bind_param("i", $id);
+            $tags_stmt->execute();
+            $tags_result = $tags_stmt->get_result();
+            $notice_tags = [];
+            while ($tag = $tags_result->fetch_assoc()) {
+                $notice_tags[] = $tag;
+            }
+            $tags_stmt->close();
+            $before_data['tags'] = $notice_tags;
+        }
 
         $stmt = $conn->prepare("DELETE FROM notices WHERE id = ?");
         $stmt->bind_param("i", $id);
         
         if ($stmt->execute()) {
             $success_message = "公告删除成功！";
-            if ($notice_row) {
-                send_message_to_all('notice', '公告已删除', '公告「' . $notice_row['title'] . '」已被删除', 'notice', $id);
+            if ($before_data) {
+                send_message_to_all('notice', '公告已删除', '公告「' . $before_data['title'] . '」已被删除', 'notice', $id);
+                write_operation_log('delete', 'notice', $id, $before_data, null);
             }
         } else {
             $error_message = "删除失败: " . $conn->error;

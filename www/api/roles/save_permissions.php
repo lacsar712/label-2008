@@ -39,6 +39,17 @@ try {
     
     $conn->begin_transaction();
     
+    // 获取变更前的权限列表（必须在删除前获取）
+    $before_perms_stmt = $conn->prepare("SELECT permission_id FROM role_permissions WHERE role_id = ?");
+    $before_perms_stmt->bind_param("i", $role_id);
+    $before_perms_stmt->execute();
+    $before_perms_result = $before_perms_stmt->get_result();
+    $before_permission_ids = [];
+    while ($row = $before_perms_result->fetch_assoc()) {
+        $before_permission_ids[] = $row['permission_id'];
+    }
+    $before_perms_stmt->close();
+    
     $stmt = $conn->prepare("DELETE FROM role_permissions WHERE role_id = ?");
     $stmt->bind_param("i", $role_id);
     $stmt->execute();
@@ -78,7 +89,27 @@ try {
     }
     
     $conn->commit();
+    
+    // 获取变更后的权限列表
+    $after_perms_stmt = $conn->prepare("SELECT permission_id FROM role_permissions WHERE role_id = ?");
+    $after_perms_stmt->bind_param("i", $role_id);
+    $after_perms_stmt->execute();
+    $after_perms_result = $after_perms_stmt->get_result();
+    $after_permission_ids = [];
+    while ($row = $after_perms_result->fetch_assoc()) {
+        $after_permission_ids[] = $row['permission_id'];
+    }
+    $after_perms_stmt->close();
+    
     closeConnection($conn);
+    
+    write_operation_log('assign_permission', 'role_permission', $role_id, [
+        'role_id' => $role_id,
+        'permission_ids' => $before_permission_ids
+    ], [
+        'role_id' => $role_id,
+        'permission_ids' => $after_permission_ids
+    ]);
     
     json_response(200, '权限保存成功');
 } catch (Exception $e) {

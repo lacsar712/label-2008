@@ -88,6 +88,16 @@ try {
     $get_target_stmt->close();
 
     closeConnection($conn);
+
+    write_operation_log('merge_tags', 'tag', [$source_id, $target_id], [
+        'source_tag' => $source_tag,
+        'target_tag_before' => $target_tag
+    ], [
+        'source_tag' => null,
+        'target_tag_after' => $updated_target,
+        'merged_references' => $merged_count
+    ]);
+
     json_response(200, '合并成功', [
         'source_tag' => $source_tag,
         'target_tag' => $updated_target,
