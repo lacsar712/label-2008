@@ -24,6 +24,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <li data-permission="user:view"><a href="user_roles.php" class="<?php echo $current_page == 'user_roles.php' ? 'active' : ''; ?>">用户角色</a></li>
             <li data-permission="log:view"><a href="operation_logs.php" class="<?php echo $current_page == 'operation_logs.php' ? 'active' : ''; ?>">操作日志</a></li>
             <li data-permission="view_analysis:view"><a href="view_analysis.php" class="<?php echo $current_page == 'view_analysis.php' ? 'active' : ''; ?>">浏览分析</a></li>
+            <li data-permission="notice_like:view"><a href="notice_likes.php" class="<?php echo $current_page == 'notice_likes.php' ? 'active' : ''; ?>">点赞洞察</a></li>
         </ul>
         <div class="nav-user">
             <?php if ($current_user): ?>

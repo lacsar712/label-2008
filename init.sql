@@ -371,3 +371,40 @@ SELECT 2, id FROM permissions WHERE category = 'banner';
 -- 为访客分配仅查看 Banner 权限
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 3, id FROM permissions WHERE name = 'banner:view';
+
+-- 创建公告点赞表
+CREATE TABLE IF NOT EXISTS notice_likes (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    notice_id INT NOT NULL COMMENT '公告ID',
+    visitor_id VARCHAR(100) NOT NULL COMMENT '访客ID（登录用户为用户ID，未登录为session_id）',
+    nickname VARCHAR(100) DEFAULT NULL COMMENT '昵称',
+    ip VARCHAR(45) DEFAULT NULL COMMENT 'IP地址',
+    client_type VARCHAR(20) DEFAULT NULL COMMENT '客户端类型: desktop, mobile, tablet, other',
+    user_agent VARCHAR(500) DEFAULT NULL COMMENT '浏览器User-Agent',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '点赞时间',
+    UNIQUE KEY unique_notice_visitor (notice_id, visitor_id),
+    INDEX idx_notice_id (notice_id),
+    INDEX idx_visitor_id (visitor_id),
+    INDEX idx_created_at (created_at),
+    INDEX idx_ip (ip),
+    INDEX idx_client_type (client_type),
+    FOREIGN KEY (notice_id) REFERENCES notices(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 插入点赞相关权限
+INSERT INTO permissions (name, display_name, description, category) VALUES
+('notice_like:view', '查看点赞数据', '查看公告点赞数据和分析', 'analysis'),
+('notice_like:export', '导出点赞名单', '导出公告点赞用户名单CSV', 'analysis'),
+('notice:like', '点赞公告', '对公告进行点赞/取消点赞操作', 'notice');
+
+-- 为超级管理员分配点赞相关权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 1, id FROM permissions WHERE name IN ('notice_like:view', 'notice_like:export', 'notice:like');
+
+-- 为编辑分配点赞查看和导出权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 2, id FROM permissions WHERE name IN ('notice_like:view', 'notice_like:export', 'notice:like');
+
+-- 为访客分配点赞权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, id FROM permissions WHERE name = 'notice:like';
