@@ -15,6 +15,22 @@
 
         <!-- 主要内容 -->
         <div class="main-content">
+            <!-- 轮播Banner -->
+            <div class="banner-carousel" id="bannerCarousel" style="display: none;">
+                <div class="banner-carousel-slides" id="bannerCarouselSlides"></div>
+                <button class="banner-carousel-prev" id="bannerCarouselPrev" onclick="prevBannerSlide()">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="banner-carousel-next" id="bannerCarouselNext" onclick="nextBannerSlide()">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <div class="banner-carousel-dots" id="bannerCarouselDots"></div>
+            </div>
+
             <!-- 欢迎横幅 -->
             <div class="welcome-banner">
                 <div class="banner-content">

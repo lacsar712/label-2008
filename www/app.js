@@ -266,7 +266,85 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCategoryCards();
     loadTagCloud();
     initMessageNotification();
+    initBannerCarousel();
 });
+
+let bannerCarouselBanners = [];
+let bannerCarouselIndex = 0;
+let bannerCarouselTimer = null;
+
+async function initBannerCarousel() {
+    const carousel = document.getElementById('bannerCarousel');
+    if (!carousel) return;
+
+    const result = await apiRequest('banners/active', 'GET');
+    if (result.code === 200 && result.data && result.data.length > 0) {
+        bannerCarouselBanners = result.data;
+        renderBannerCarousel();
+        carousel.style.display = 'block';
+        startBannerAutoPlay();
+    }
+}
+
+function renderBannerCarousel() {
+    const slidesContainer = document.getElementById('bannerCarouselSlides');
+    const dotsContainer = document.getElementById('bannerCarouselDots');
+
+    slidesContainer.innerHTML = bannerCarouselBanners.map((banner, index) => `
+        <div class="banner-carousel-slide ${index === 0 ? 'active' : ''}">
+            ${banner.link_url ? `<a href="${escapeHtml(banner.link_url)}" target="_blank">` : ''}
+                <img src="${escapeHtml(banner.image_url)}" alt="${escapeHtml(banner.title || 'Banner')}">
+            ${banner.link_url ? `</a>` : ''}
+            ${banner.title || banner.subtitle ? `
+                <div class="banner-carousel-overlay">
+                    ${banner.title ? `<h3>${escapeHtml(banner.title)}</h3>` : ''}
+                    ${banner.subtitle ? `<p>${escapeHtml(banner.subtitle)}</p>` : ''}
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+
+    dotsContainer.innerHTML = bannerCarouselBanners.map((_, index) => `
+        <span class="banner-carousel-dot ${index === 0 ? 'active' : ''}" onclick="goToBannerSlide(${index})"></span>
+    `).join('');
+}
+
+function startBannerAutoPlay() {
+    if (bannerCarouselTimer) clearInterval(bannerCarouselTimer);
+    bannerCarouselTimer = setInterval(() => {
+        nextBannerSlide();
+    }, 5000);
+}
+
+function goToBannerSlide(index) {
+    const slides = document.querySelectorAll('.banner-carousel-slide');
+    const dots = document.querySelectorAll('.banner-carousel-dot');
+    
+    slides.forEach((slide, i) => {
+        slide.classList.toggle('active', i === index);
+    });
+    dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
+    });
+    
+    bannerCarouselIndex = index;
+    if (bannerCarouselTimer) {
+        clearInterval(bannerCarouselTimer);
+        startBannerAutoPlay();
+    }
+}
+
+function prevBannerSlide() {
+    if (bannerCarouselBanners.length === 0) return;
+    const newIndex = (bannerCarouselIndex - 1 + bannerCarouselBanners.length) % bannerCarouselBanners.length;
+    goToBannerSlide(newIndex);
+}
+
+function nextBannerSlide() {
+    if (bannerCarouselBanners.length === 0) return;
+    const newIndex = (bannerCarouselIndex + 1) % bannerCarouselBanners.length;
+    goToBannerSlide(newIndex);
+}
 
 async function loadTagCloud() {
     const container = document.getElementById('tagCloud');

@@ -333,3 +333,41 @@ SELECT 1, id FROM permissions WHERE category = 'analysis';
 -- 为编辑分配浏览分析权限
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 2, id FROM permissions WHERE category = 'analysis';
+
+-- 创建 Banner 轮播图表
+CREATE TABLE IF NOT EXISTS banners (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    image_url VARCHAR(255) NOT NULL COMMENT '图片URL',
+    title VARCHAR(255) DEFAULT NULL COMMENT '标题',
+    subtitle VARCHAR(255) DEFAULT NULL COMMENT '副标题',
+    link_url VARCHAR(500) DEFAULT NULL COMMENT '跳转链接',
+    start_time DATETIME DEFAULT NULL COMMENT '生效开始时间',
+    end_time DATETIME DEFAULT NULL COMMENT '生效结束时间',
+    sort_order INT DEFAULT 0 COMMENT '排序值',
+    status ENUM('enabled', 'disabled') DEFAULT 'enabled' COMMENT '启用状态',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_status (status),
+    INDEX idx_sort_order (sort_order),
+    INDEX idx_start_time (start_time),
+    INDEX idx_end_time (end_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 插入 Banner 相关权限
+INSERT INTO permissions (name, display_name, description, category) VALUES
+('banner:view', '查看Banner', '查看轮播Banner列表', 'banner'),
+('banner:create', '创建Banner', '添加新的轮播Banner', 'banner'),
+('banner:edit', '编辑Banner', '修改轮播Banner信息', 'banner'),
+('banner:delete', '删除Banner', '删除轮播Banner', 'banner');
+
+-- 为超级管理员分配 Banner 权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 1, id FROM permissions WHERE category = 'banner';
+
+-- 为编辑分配 Banner 管理权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 2, id FROM permissions WHERE category = 'banner';
+
+-- 为访客分配仅查看 Banner 权限
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, id FROM permissions WHERE name = 'banner:view';

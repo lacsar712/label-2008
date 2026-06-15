@@ -17,6 +17,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <li data-permission="notice:create"><a href="add_notice.php" class="<?php echo $current_page == 'add_notice.php' ? 'active' : ''; ?>">添加公告</a></li>
             <li><a href="search_notice.php" class="<?php echo $current_page == 'search_notice.php' ? 'active' : ''; ?>">查询公告</a></li>
             <li data-permission="category:view"><a href="categories.php" class="<?php echo $current_page == 'categories.php' ? 'active' : ''; ?>">分类管理</a></li>
+            <li data-permission="banner:view"><a href="banners.php" class="<?php echo $current_page == 'banners.php' ? 'active' : ''; ?>">Banner管理</a></li>
             <li data-permission="role:view"><a href="roles.php" class="<?php echo $current_page == 'roles.php' ? 'active' : ''; ?>">角色管理</a></li>
             <li data-permission="tag:view"><a href="tags.php" class="<?php echo $current_page == 'tags.php' ? 'active' : ''; ?>">标签管理</a></li>
             <li data-any-permission="notice:export,notice:import"><a href="data_import_export.php" class="<?php echo $current_page == 'data_import_export.php' ? 'active' : ''; ?>">数据导入导出</a></li>
