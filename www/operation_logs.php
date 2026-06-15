@@ -130,6 +130,7 @@ require_permission('log:view');
         </div>
     </div>
 
+    <script src="app.js"></script>
     <script src="operation_logs.js"></script>
 </body>
 </html>

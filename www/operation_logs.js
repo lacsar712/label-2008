@@ -2,10 +2,46 @@ let currentPage = 1;
 let perPage = 20;
 let totalPages = 1;
 let currentFilters = {};
+let backToTopBtn = null;
 
-document.addEventListener('DOMContentLoaded', function() {
-    loadFilterOptions();
+const OPERATION_TYPES = [
+    { value: 'create', label: '创建' },
+    { value: 'update', label: '更新' },
+    { value: 'delete', label: '删除' },
+    { value: 'batch_update', label: '批量更新' },
+    { value: 'batch_delete', label: '批量删除' },
+    { value: 'assign_permission', label: '分配权限' },
+    { value: 'assign_role', label: '分配角色' },
+    { value: 'set_tags', label: '设置标签' },
+    { value: 'merge_tags', label: '合并标签' },
+    { value: 'import', label: '导入' }
+];
+
+const TARGET_TYPES = [
+    { value: 'notice', label: '公告' },
+    { value: 'category', label: '分类' },
+    { value: 'tag', label: '标签' },
+    { value: 'role', label: '角色' },
+    { value: 'user', label: '用户' },
+    { value: 'role_permission', label: '角色权限' },
+    { value: 'user_role', label: '用户角色' }
+];
+
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadCurrentUserPermissions();
+    initPermissionBasedUI();
+
+    populateFilterOptions();
+
+    createBackToTopButton();
+
     loadLogs(1);
+
+    document.getElementById('filterOperator').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            loadLogs(1);
+        }
+    });
 
     document.getElementById('filterKeyword').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
@@ -20,30 +56,23 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-async function loadFilterOptions() {
-    const result = await apiRequest('operation_logs/list?page=1&per_page=1', 'GET');
-    if (result.code === 200 && result.data.filters) {
-        const operationTypeSelect = document.getElementById('filterOperationType');
-        const targetTypeSelect = document.getElementById('filterTargetType');
+function populateFilterOptions() {
+    const operationTypeSelect = document.getElementById('filterOperationType');
+    const targetTypeSelect = document.getElementById('filterTargetType');
 
-        if (result.data.filters.operation_types) {
-            result.data.filters.operation_types.forEach(opt => {
-                const option = document.createElement('option');
-                option.value = opt.value;
-                option.textContent = opt.label;
-                operationTypeSelect.appendChild(option);
-            });
-        }
+    OPERATION_TYPES.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        operationTypeSelect.appendChild(option);
+    });
 
-        if (result.data.filters.target_types) {
-            result.data.filters.target_types.forEach(opt => {
-                const option = document.createElement('option');
-                option.value = opt.value;
-                option.textContent = opt.label;
-                targetTypeSelect.appendChild(option);
-            });
-        }
-    }
+    TARGET_TYPES.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        targetTypeSelect.appendChild(option);
+    });
 }
 
 async function loadLogs(page) {
@@ -307,7 +336,7 @@ function resetFilters() {
 }
 
 function exportCSV() {
-    let url = 'operation_logs/export?';
+    let url = 'api/operation_logs/export?';
     const params = new URLSearchParams();
     if (currentFilters.operator) params.append('operator', currentFilters.operator);
     if (currentFilters.operation_type) params.append('operation_type', currentFilters.operation_type);
@@ -317,6 +346,70 @@ function exportCSV() {
     if (currentFilters.date_to) params.append('date_to', currentFilters.date_to);
 
     window.location.href = url + params.toString();
+}
+
+function createBackToTopButton() {
+    backToTopBtn = document.createElement('button');
+    backToTopBtn.id = 'backToTopBtn';
+    backToTopBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;">
+            <path d="M12 19V5M12 5L5 12M12 5L19 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    `;
+    Object.assign(backToTopBtn.style, {
+        position: 'fixed',
+        right: '24px',
+        bottom: '24px',
+        width: '48px',
+        height: '48px',
+        borderRadius: '50%',
+        background: 'var(--primary-color)',
+        color: 'white',
+        border: 'none',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+        opacity: '0',
+        visibility: 'hidden',
+        transform: 'translateY(20px)',
+        transition: 'all 0.3s ease',
+        zIndex: '1000'
+    });
+
+    backToTopBtn.addEventListener('mouseenter', function() {
+        this.style.background = 'var(--primary-light)';
+        this.style.transform = 'translateY(-2px)';
+    });
+
+    backToTopBtn.addEventListener('mouseleave', function() {
+        this.style.background = 'var(--primary-color)';
+        if (window.scrollY > 200) {
+            this.style.transform = 'translateY(0)';
+        }
+    });
+
+    backToTopBtn.addEventListener('click', function() {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+
+    document.body.appendChild(backToTopBtn);
+
+    window.addEventListener('scroll', function() {
+        if (window.scrollY > 200) {
+            backToTopBtn.style.opacity = '1';
+            backToTopBtn.style.visibility = 'visible';
+            backToTopBtn.style.transform = 'translateY(0)';
+        } else {
+            backToTopBtn.style.opacity = '0';
+            backToTopBtn.style.visibility = 'hidden';
+            backToTopBtn.style.transform = 'translateY(20px)';
+        }
+    });
 }
 
 function escapeHtml(text) {
