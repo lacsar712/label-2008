@@ -99,7 +99,7 @@ foreach ($rows as $idx => $row) {
         continue;
     }
 
-    $stmt->bind_param("sssisis", $title, $content, $author, $author_id, $category_id, $priority, $status);
+    $stmt->bind_param("sssiiss", $title, $content, $author, $author_id, $category_id, $priority, $status);
     if ($stmt->execute()) {
         $results[] = [
             'row_index' => $row_index,

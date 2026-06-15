@@ -2848,6 +2848,20 @@ input[type="checkbox"] {
 }
 
 /* ==================== 数据导入导出页面 ==================== */
+.page-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
 .import-export-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -3289,6 +3303,16 @@ input[type="checkbox"] {
 }
 
 @media (max-width: 768px) {
+    .page-header-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-md);
+    }
+
+    .page-title {
+        font-size: 1.25rem;
+    }
+
     .import-export-layout {
         grid-template-columns: 1fr;
     }

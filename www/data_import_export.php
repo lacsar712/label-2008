@@ -25,6 +25,15 @@ closeConnection($conn);
 
     <div class="container">
         <div class="main-content">
+            <div class="page-header-bar">
+                <h1 class="page-title">数据导入导出</h1>
+                <a href="search_notice.php" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px;">
+                        <path d="M21 21L16.65 16.65M11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11C19 15.4183 15.4183 19 11 19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    前往公告列表
+                </a>
+            </div>
             <div class="import-export-layout">
                 <div class="import-export-panel export-panel">
                     <div class="panel-header">
